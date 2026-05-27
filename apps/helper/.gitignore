@@ -1,8 +1,8 @@
 # Build artifacts
 /bin/
 /dist/
-projectmng-helper
-projectmng-helper-cli
+/projectmng-helper
+/projectmng-helper-cli
 
 # Test artifacts
 *.test
