@@ -45,4 +45,24 @@ func (h *Handlers) CertbotIssue(ctx context.Context, raw json.RawMessage) Respon
 	return SuccessResponse(map[string]any{"domain": p.Domain, "issued": true})
 }
 
-// (CertbotRenew comes in Task 9.)
+const certbotRenewTimeout = 300 * time.Second
+
+// CertbotRenew renews all managed certs that are due. Safe to call frequently;
+// certbot is a no-op for certs not due for renewal.
+func (h *Handlers) CertbotRenew(ctx context.Context) Response {
+	ctx, cancel := context.WithTimeout(ctx, certbotRenewTimeout)
+	defer cancel()
+	args := []string{"renew", "--webroot", "-w", h.Cfg.AcmeWebroot, "-n", "--no-random-sleep-on-renew"}
+	stdout, stderr, code, err := h.Runner.Run(ctx, h.Cfg.CertbotBin, args...)
+	if err != nil {
+		return ErrorResponse("certbot_renew_failed", "could not exec certbot renew: "+err.Error(), string(stderr))
+	}
+	if code != 0 {
+		return ErrorResponse("certbot_renew_failed", fmt.Sprintf("certbot renew exited %d", code), string(stderr))
+	}
+	summary := string(stdout)
+	if len(summary) > 4096 {
+		summary = summary[:4096] + "…[truncated]"
+	}
+	return SuccessResponse(map[string]any{"renewed": true, "stdout": summary})
+}
