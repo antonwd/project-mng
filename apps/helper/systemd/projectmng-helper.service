@@ -1,0 +1,37 @@
+[Unit]
+Description=projectmng privileged helper (nginx + certbot operations)
+After=network.target nginx.service
+Wants=nginx.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/projectmng-helper
+Restart=on-failure
+RestartSec=2s
+User=root
+Group=root
+
+# Sandboxing — projectmng-helper does not need most of the host.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+# Filesystem write access — exactly what the four commands need, nothing more.
+ReadWritePaths=/run/projectmng /etc/nginx/sites-enabled/managed /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt /var/www/_acme
+
+# Capabilities — we don't actually need any capabilities ourselves; we shell
+# out to nginx/systemctl/certbot which run with their own permissions.
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

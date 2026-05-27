@@ -1,0 +1,3 @@
+# /run/projectmng must exist before the service starts; systemd-tmpfiles
+# (re)creates it at boot. Owner root, group projectmng, mode 0750.
+d /run/projectmng 0750 root projectmng -
