@@ -1,0 +1,15 @@
+# Build artifacts
+/bin/
+/dist/
+projectmng-helper
+projectmng-helper-cli
+
+# Test artifacts
+*.test
+*.out
+coverage.txt
+
+# Editor
+.idea/
+.vscode/
+*.swp
