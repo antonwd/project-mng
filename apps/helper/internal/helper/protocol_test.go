@@ -38,8 +38,8 @@ func TestReadFrame_RejectsOversizePayload(t *testing.T) {
 func TestReadFrame_ShortHeader(t *testing.T) {
 	buf := bytes.NewReader([]byte{0x00, 0x00}) // only 2 bytes
 	_, err := ReadFrame(buf)
-	if !errors.Is(err, io.ErrUnexpectedEOF) && err == nil {
-		t.Fatalf("expected EOF-ish error, got %v", err)
+	if err == nil || !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("expected io.ErrUnexpectedEOF, got %v", err)
 	}
 }
 
