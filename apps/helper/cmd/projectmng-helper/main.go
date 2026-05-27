@@ -43,7 +43,12 @@ func run(logger *slog.Logger) error {
 		AcmeWebroot:    envOr("PROJECTMNG_ACME_WEBROOT", "/var/www/_acme"),
 	}
 	socketPath := envOr("PROJECTMNG_SOCKET_PATH", "/run/projectmng/helper.sock")
-	socketGroup := envOr("PROJECTMNG_SOCKET_GROUP", "projectmng")
+	// PROJECTMNG_SOCKET_GROUP: distinguish unset (use default "projectmng") from
+	// explicitly empty (skip chown — useful on hosts without that group).
+	socketGroup, hasSocketGroup := os.LookupEnv("PROJECTMNG_SOCKET_GROUP")
+	if !hasSocketGroup {
+		socketGroup = "projectmng"
+	}
 
 	if err := os.MkdirAll(filepath.Dir(socketPath), 0o755); err != nil {
 		return err
