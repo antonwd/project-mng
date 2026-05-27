@@ -267,11 +267,12 @@ Installer is a signed, versioned shell script with published SHA-256 sums.
    - `/etc/nginx/sites-enabled/managed/` — root-owned, group-writable by `projectmng` via ACL.
    - `/var/www/_acme/` — certbot webroot.
 3. Install host-helper binary at `/usr/local/bin/projectmng-helper` + systemd unit `projectmng-helper.service`. Socket: `/run/projectmng/helper.sock` (0660, group `projectmng`).
-4. Install `/etc/sudoers.d/projectmng` with: `projectmng ALL=(root) NOPASSWD: /bin/systemctl reload nginx, /usr/sbin/nginx -t` (belt-and-suspenders; helper is the primary path).
-5. Write `/opt/projectmng/docker-compose.yml` with pinned image versions, internal `pm_internal` network, read-only mounts for master.key + GitHub App key, helper socket bind-mount, socket-proxy with allow-list env vars, generated Postgres password in `/opt/projectmng/.env` (0400).
-6. Pull images, run migrations, `docker compose up -d`.
-7. Write initial nginx config for `pm.<your-domain>` → pm-web loopback port; run certbot to issue the first cert. This validates the whole DNS → nginx → certbot chain before going further.
-8. Print a one-time enrollment URL (`https://pm.example.com/enroll/<token>`) — single-use, 30-minute expiry; only the hash is stored in DB.
+4. Write `/opt/projectmng/docker-compose.yml` with pinned image versions, internal `pm_internal` network, read-only mounts for master.key + GitHub App key, helper socket bind-mount, socket-proxy with allow-list env vars, generated Postgres password in `/opt/projectmng/.env` (0400). Compose runs the platform containers as UID/GID matching the `projectmng` user so the helper socket bind-mount is accessible.
+5. Pull images, run migrations, `docker compose up -d`.
+6. Write initial nginx config for `pm.<your-domain>` → pm-web loopback port; run certbot to issue the first cert. This validates the whole DNS → nginx → certbot chain before going further.
+7. Print a one-time enrollment URL (`https://pm.example.com/enroll/<token>`) — single-use, 30-minute expiry; only the hash is stored in DB.
+
+The helper is the only root surface — no sudoers fragment. If the helper unit fails, systemd restarts it; if it stays down, the platform reports the failure in the dashboard and routine ops (deploy, domain add) refuse to proceed until it recovers.
 
 Operator opens the URL, registers a passkey (or password + TOTP), logs in.
 
@@ -289,14 +290,21 @@ Operator opens the URL, registers a passkey (or password + TOTP), logs in.
 - **Security tests:** authentication rate-limiting, session revocation, role-grant assertions on the Postgres role, helper command parser fuzz tests, socket-proxy allow-list verification.
 - **Manual smoke:** the install script run against a clean Debian VM before each release.
 
-## 10. Open Questions for the Implementation Plan
-- Image distribution strategy (public registry vs. private vs. building locally on each release).
-- Versioning / release cadence convention.
-- Telemetry / opt-in error reporting (default: none).
-- Whether the dashboard supports dark mode by default (likely yes via shadcn defaults).
-- Exact log retention windows beyond the documented 7-day default.
+## 10. Release & Distribution
 
-## 11. Glossary
+- **Source repository:** single GitHub repo `projectmng/projectmng` (monorepo: `apps/api`, `apps/web`, `apps/helper`, `installer/`).
+- **Images:** built in GitHub Actions on every tagged release and published to **GitHub Container Registry (GHCR)** as public images: `ghcr.io/projectmng/api:<ver>`, `ghcr.io/projectmng/web:<ver>`. Public so install doesn't need registry auth. SBOM + cosign signatures attached.
+- **Helper binary:** built per release as a static Go binary for `linux/amd64` and `linux/arm64`, published as a signed GitHub release asset.
+- **Versioning:** semver via git tags (`vMAJOR.MINOR.PATCH`). Install script pins to a minor version by default (`--channel v1.2`) so patch updates are auto-pulled by `projectmng update` but minor bumps are an explicit operator action.
+- **Release cadence:** ad-hoc; no fixed schedule. Each release ships compose file + images + helper binary + install script all version-pinned together.
+
+## 11. Settled defaults (would otherwise be open questions)
+
+- **Telemetry / error reporting:** none by default. No outbound network calls beyond GitHub API + image registry + Let's Encrypt + apps' own traffic. May add opt-in error reporting later.
+- **Dark mode:** follows OS preference, shadcn defaults; user-overridable in dashboard settings.
+- **Log retention:** deployment logs 7 days, audit log indefinite (it stays small), nginx access logs use host nginx's default rotation.
+
+## 12. Glossary
 
 - **DEK** — Data Encryption Key, the symmetric AES-GCM key used to encrypt per-app env vars.
 - **Nixpacks** — auto-Dockerfile generator (https://nixpacks.com), MIT.
