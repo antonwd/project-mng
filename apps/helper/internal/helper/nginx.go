@@ -3,7 +3,9 @@ package helper
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"time"
 )
 
 // Config holds tunables resolved from env vars / install-time defaults.
@@ -46,4 +48,25 @@ func (h *Handlers) NginxWriteConfig(_ context.Context, raw json.RawMessage) Resp
 	})
 }
 
-// (NginxReload comes in Task 7.)
+// NginxReload validates the running nginx configuration and reloads it via
+// systemd. Validate-before-reload prevents nginx from being asked to apply
+// a broken config that would crash the master process.
+func (h *Handlers) NginxReload(ctx context.Context) Response {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	_, stderr, code, err := h.Runner.Run(ctx, h.Cfg.NginxBin, "-t")
+	if err != nil {
+		return ErrorResponse("nginx_test_failed", "could not exec nginx -t: "+err.Error(), string(stderr))
+	}
+	if code != 0 {
+		return ErrorResponse("nginx_test_failed", fmt.Sprintf("nginx -t exited %d", code), string(stderr))
+	}
+	_, stderr, code, err = h.Runner.Run(ctx, h.Cfg.SystemctlBin, "reload", "nginx")
+	if err != nil {
+		return ErrorResponse("nginx_reload_failed", "could not exec systemctl reload: "+err.Error(), string(stderr))
+	}
+	if code != 0 {
+		return ErrorResponse("nginx_reload_failed", fmt.Sprintf("systemctl reload nginx exited %d", code), string(stderr))
+	}
+	return SuccessResponse(map[string]any{"validated": true, "reloaded": true})
+}

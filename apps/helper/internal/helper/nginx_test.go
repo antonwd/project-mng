@@ -83,3 +83,67 @@ func TestNginxWriteConfig_DataIncludesPath(t *testing.T) {
 		t.Fatalf("data missing path: %s", data)
 	}
 }
+
+func TestNginxReload_HappyPath(t *testing.T) {
+	runner := &FakeRunner{
+		Responses: []FakeResponse{
+			{ExitCode: 0}, // nginx -t
+			{ExitCode: 0}, // systemctl reload nginx
+		},
+	}
+	h := &Handlers{
+		Cfg:    Config{NginxBin: "/usr/sbin/nginx", SystemctlBin: "/bin/systemctl"},
+		Runner: runner,
+	}
+	resp := h.NginxReload(context.Background())
+	if !resp.OK {
+		t.Fatalf("expected ok, got %+v", resp)
+	}
+	if len(runner.Calls) != 2 {
+		t.Fatalf("expected 2 calls, got %d", len(runner.Calls))
+	}
+	if runner.Calls[0].Name != "/usr/sbin/nginx" || runner.Calls[0].Args[0] != "-t" {
+		t.Fatalf("unexpected first call: %+v", runner.Calls[0])
+	}
+	if runner.Calls[1].Name != "/bin/systemctl" ||
+		runner.Calls[1].Args[0] != "reload" ||
+		runner.Calls[1].Args[1] != "nginx" {
+		t.Fatalf("unexpected second call: %+v", runner.Calls[1])
+	}
+}
+
+func TestNginxReload_TestFails(t *testing.T) {
+	runner := &FakeRunner{
+		Responses: []FakeResponse{
+			{ExitCode: 1, Stderr: []byte("nginx: [emerg] bind() to 0.0.0.0:80 failed")},
+		},
+	}
+	h := &Handlers{
+		Cfg:    Config{NginxBin: "/usr/sbin/nginx", SystemctlBin: "/bin/systemctl"},
+		Runner: runner,
+	}
+	resp := h.NginxReload(context.Background())
+	if resp.OK || resp.Error != "nginx_test_failed" {
+		t.Fatalf("expected nginx_test_failed, got %+v", resp)
+	}
+	if len(runner.Calls) != 1 {
+		t.Fatalf("expected reload NOT to be attempted, got %d calls", len(runner.Calls))
+	}
+}
+
+func TestNginxReload_ReloadFails(t *testing.T) {
+	runner := &FakeRunner{
+		Responses: []FakeResponse{
+			{ExitCode: 0},
+			{ExitCode: 1, Stderr: []byte("Failed to reload nginx.service")},
+		},
+	}
+	h := &Handlers{
+		Cfg:    Config{NginxBin: "/usr/sbin/nginx", SystemctlBin: "/bin/systemctl"},
+		Runner: runner,
+	}
+	resp := h.NginxReload(context.Background())
+	if resp.OK || resp.Error != "nginx_reload_failed" {
+		t.Fatalf("expected nginx_reload_failed, got %+v", resp)
+	}
+}
