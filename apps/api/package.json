@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "node dist/db/migrate.js",
+    "db:migrate:dev": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^9.3.1",
