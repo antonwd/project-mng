@@ -1,4 +1,8 @@
-// Real implementation lands in Task 29.
-export async function runCertRenew(_deps: unknown): Promise<void> {
-  throw new Error("runCertRenew not yet implemented");
+import type { HelperClient } from "../../clients/helper.js";
+
+export type CertRenewDeps = { helper: HelperClient };
+
+export async function runCertRenew(deps: CertRenewDeps): Promise<void> {
+  await deps.helper.certbotRenew();
+  await deps.helper.nginxReload();
 }
