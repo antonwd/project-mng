@@ -50,7 +50,7 @@ const PasswordLoginInput = z.object({
   totp: z.string().regex(/^\d{6}$/),
 });
 
-export type ActionState = { error?: string } | undefined;
+export type ActionState = { error?: string } | null;
 
 export async function passwordLoginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = PasswordLoginInput.safeParse(Object.fromEntries(formData));
@@ -94,7 +94,7 @@ export async function passwordSetupAction(_prev: ActionState, formData: FormData
     return { error: body?.error?.message ?? `setup failed (${res.status})` };
   }
   revalidatePath("/account");
-  return undefined;
+  return null;
 }
 
 export async function startWebauthnRegistrationAction(inviteToken: string | undefined): Promise<{ options: unknown } | { error: string }> {
