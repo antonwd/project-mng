@@ -3,11 +3,20 @@ import { eq } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { users } from "../../db/schema.js";
 import { AuditLog } from "../../auth/audit.js";
-import { Forbidden, NotFound } from "../../lib/errors.js";
+import { Forbidden, NotFound, Unauthorized } from "../../lib/errors.js";
 
 export type UsersDeps = { db: Database; audit: AuditLog };
 
 export function registerUsersRoutes(app: FastifyInstance, deps: UsersDeps) {
+  app.get("/api/me", { preHandler: app.requireAuth }, async (req) => {
+    const [row] = await deps.db
+      .select({ id: users.id, email: users.email, totpEnabled: users.totpEnabled })
+      .from(users)
+      .where(eq(users.id, req.session!.userId));
+    if (!row) throw Unauthorized();
+    return row;
+  });
+
   app.get("/api/users", { preHandler: app.requireAuth }, async () => {
     const rows = await deps.db.select({
       id: users.id,
