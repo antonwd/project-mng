@@ -91,6 +91,37 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps) {
     return { ok: true };
   });
 
+  const PasswordEnrollBody = z.object({
+    inviteToken: z.string().min(1),
+    email: z.string().email(),
+    password: z.string().min(8),
+    totpSecret: z.string().min(16),
+    totpToken: z.string().regex(/^\d{6}$/),
+  });
+
+  app.post("/api/auth/password/enroll", async (req, reply) => {
+    const body = PasswordEnrollBody.parse(req.body);
+    if (!verifyTotp(body.totpSecret, body.totpToken)) throw BadRequest("invalid totp token");
+    const { userId } = await deps.invites.consume(body.inviteToken, body.email);
+    const enc = encryptSecret(deps.masterKey, body.totpSecret);
+    const blob = new Uint8Array(enc.nonce.length + enc.ciphertext.length);
+    blob.set(enc.nonce, 0);
+    blob.set(enc.ciphertext, enc.nonce.length);
+    const hash = await hashPassword(body.password);
+    await deps.db.update(users)
+      .set({ passwordHash: hash, totpSecretEnc: blob, totpEnabled: true, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+    const { sessionId } = await deps.sessions.create({ userId, ip: req.ip, userAgent: req.headers["user-agent"] });
+    app.setSessionCookie(reply, sessionId);
+    await deps.audit.write({
+      actorIp: req.ip,
+      actorUserId: userId,
+      action: "user.enroll",
+      metadata: { method: "password+totp" },
+    });
+    return { ok: true };
+  });
+
   const WEBAUTHN_REG_COOKIE = "pm_webauthn_reg";
   const WEBAUTHN_LOGIN_COOKIE = "pm_webauthn_login";
   const challengeCookieOpts = { httpOnly: true, secure: true, sameSite: "strict" as const, path: "/", maxAge: 300 };
