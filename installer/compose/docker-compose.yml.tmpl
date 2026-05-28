@@ -1,0 +1,133 @@
+# rendered by installer/install.sh — do not edit by hand
+name: projectmng
+
+networks:
+  pm_internal:
+    driver: bridge
+
+volumes:
+  pg_data:
+  redis_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: projectmng
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: projectmng
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks: [pm_internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projectmng -d projectmng"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    networks: [pm_internal]
+
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      BUILD: 1
+      NETWORKS: 1
+      EXEC: 1
+      POST: 1
+      VOLUMES: 0
+      SWARM: 0
+      SYSTEM: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [pm_internal]
+
+  pm-api:
+    image: ghcr.io/projectmng/api:${VERSION}
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_started }
+      docker-socket-proxy: { condition: service_started }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://projectmng:${POSTGRES_PASSWORD}@postgres:5432/projectmng
+      REDIS_URL: redis://redis:6379
+      MASTER_KEY_PATH: /run/secrets/master.key
+      HELPER_SOCKET_PATH: /run/projectmng/helper.sock
+      DOCKER_PROXY_URL: http://docker-socket-proxy:2375
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_APP_PRIVATE_KEY_PATH: /run/secrets/github-app.pem
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
+      WEBAUTHN_RP_NAME: projectMng
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      INTERNAL_PORT_MIN: "10000"
+      INTERNAL_PORT_MAX: "19999"
+      NGINX_MANAGED_DIR: /etc/nginx/sites-enabled/managed
+      ACME_EMAIL: ${ACME_EMAIL}
+      HTTP_PORT: "3000"
+    user: "${PM_UID}:${PM_GID}"
+    volumes:
+      - /etc/projectmng/master.key:/run/secrets/master.key:ro
+      - /etc/projectmng/github-app.pem:/run/secrets/github-app.pem:ro
+      - /run/projectmng:/run/projectmng
+    ports:
+      - "127.0.0.1:3001:3000"
+    networks: [pm_internal]
+    command: ["node", "dist/index.api.js"]
+
+  pm-worker:
+    image: ghcr.io/projectmng/api:${VERSION}
+    restart: unless-stopped
+    depends_on:
+      pm-api: { condition: service_started }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://projectmng:${POSTGRES_PASSWORD}@postgres:5432/projectmng
+      REDIS_URL: redis://redis:6379
+      MASTER_KEY_PATH: /run/secrets/master.key
+      HELPER_SOCKET_PATH: /run/projectmng/helper.sock
+      DOCKER_PROXY_URL: http://docker-socket-proxy:2375
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_APP_PRIVATE_KEY_PATH: /run/secrets/github-app.pem
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
+      WEBAUTHN_RP_NAME: projectMng
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      INTERNAL_PORT_MIN: "10000"
+      INTERNAL_PORT_MAX: "19999"
+      NGINX_MANAGED_DIR: /etc/nginx/sites-enabled/managed
+      ACME_EMAIL: ${ACME_EMAIL}
+      HTTP_PORT: "3000"
+    user: "${PM_UID}:${PM_GID}"
+    volumes:
+      - /etc/projectmng/master.key:/run/secrets/master.key:ro
+      - /etc/projectmng/github-app.pem:/run/secrets/github-app.pem:ro
+      - /run/projectmng:/run/projectmng
+    networks: [pm_internal]
+    command: ["node", "dist/index.worker.js"]
+
+  pm-web:
+    image: ghcr.io/projectmng/web:${VERSION}
+    restart: unless-stopped
+    depends_on:
+      pm-api: { condition: service_started }
+    environment:
+      NODE_ENV: production
+      PM_API_URL: http://pm-api:3000
+      NEXT_PUBLIC_WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
+    ports:
+      - "127.0.0.1:3002:3000"
+    networks: [pm_internal]
