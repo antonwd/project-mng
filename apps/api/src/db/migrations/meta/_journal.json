@@ -8,6 +8,13 @@
       "when": 1779904841606,
       "tag": "0000_lyrical_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779944000000,
+      "tag": "0001_audit_log_append_only",
+      "breakpoints": true
     }
   ]
 }
