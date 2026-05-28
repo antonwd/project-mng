@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { eq } from "drizzle-orm";
 import { RedisContainer, StartedRedisContainer } from "@testcontainers/redis";
 import Redis from "ioredis";
 import * as schema from "../../db/schema.js";
@@ -98,5 +99,28 @@ describe("auth routes", () => {
     expect(r.statusCode).toBe(401);
     await app.close();
     expect(user.id).toBeTypeOf("string");
+  });
+
+  it("password setup writes hashed password + encrypted totp", async () => {
+    const [user] = await db.insert(schema.users).values({ email: "setup@a.com" }).returning();
+    const app = await createServer({ cookieSecret: "x".repeat(32) });
+    const sessions = new SessionManager(db, { ttlDays: 7 });
+    await app.register(authPlugin, { sessions });
+    registerAuthRoutes(app, { db, sessions, rateLimit: new RateLimiter(redis), audit: new AuditLog(db), masterKey, webauthn: null as any, invites: null as any });
+
+    const { sessionId } = await sessions.create({ userId: user.id });
+    const totpSecret = authenticator.generateSecret();
+    const r = await app.inject({
+      method: "POST",
+      url: "/api/auth/password/setup",
+      headers: { cookie: `pm_session=${sessionId}` },
+      payload: { password: "longpass123", totpSecret, totpToken: authenticator.generate(totpSecret) },
+    });
+    expect(r.statusCode).toBe(200);
+    const [updated] = await db.select().from(schema.users).where(eq(schema.users.id, user.id));
+    expect(updated.passwordHash).toBeTruthy();
+    expect(updated.totpEnabled).toBe(true);
+    expect(updated.totpSecretEnc).toBeTruthy();
+    await app.close();
   });
 });

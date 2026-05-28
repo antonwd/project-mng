@@ -29,7 +29,9 @@ export class InviteService {
       if (!invite) throw NotFound("invite invalid or expired");
       const existing = await tx.select().from(users).where(eq(users.email, newUserEmail));
       if (existing.length > 0) throw Conflict("email already registered");
-      const [user] = await tx.insert(users).values({ email: newUserEmail }).returning();
+      const insertedUsers = await tx.insert(users).values({ email: newUserEmail }).returning();
+      const user = insertedUsers[0];
+      if (!user) throw new Error("failed to insert user");
       await tx.update(invites).set({ consumedAt: new Date(), consumedBy: user.id }).where(eq(invites.tokenHash, hash));
       return { userId: user.id };
     });
