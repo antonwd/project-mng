@@ -17,7 +17,9 @@ describe("apiFetch", () => {
       "http://pm-api:3000/api/apps",
       expect.objectContaining({ headers: expect.any(Headers) }),
     );
-    const callHeaders = fetchMock.mock.calls[0]![1]!.headers as Headers;
+    const firstCall = fetchMock.mock.calls[0] as unknown as [string, RequestInit] | undefined;
+    expect(firstCall).toBeTruthy();
+    const callHeaders = firstCall![1].headers as Headers;
     expect(callHeaders.get("cookie")).toBe("pm_session=abc");
     vi.unstubAllGlobals();
   });
