@@ -1,0 +1,26 @@
+# A pseudo-VM image used by installer/test/smoke.sh.
+#
+# Includes everything install.sh needs on the host: docker CLI (the
+# real daemon runs on the test host via /var/run/docker.sock bind),
+# nginx, certbot, openssl, dig, jq, curl, envsubst. Runs systemd via
+# the standard dind-style configuration so the helper unit can be
+# installed and started.
+FROM debian:12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl gnupg lsb-release \
+      nginx certbot \
+      docker.io docker-compose-plugin \
+      jq bind9-host openssl gettext-base shellcheck \
+      systemd systemd-sysv \
+ && rm -rf /var/lib/apt/lists/*
+
+# Disable nginx default site so install.sh's site is the only one.
+RUN rm -f /etc/nginx/sites-enabled/default
+
+# Mark systemd as the init.
+STOPSIGNAL SIGRTMIN+3
+
+CMD ["/lib/systemd/systemd"]
