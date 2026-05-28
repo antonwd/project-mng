@@ -80,4 +80,13 @@ export class AppsService {
   async softDelete(id: string) {
     await this.db.update(apps).set({ deletedAt: new Date() }).where(eq(apps.id, id));
   }
+
+  async update(id: string, patch: { defaultBranch?: string; buildRoot?: string; autoDeploy?: boolean }) {
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (patch.defaultBranch !== undefined) updates.defaultBranch = patch.defaultBranch;
+    if (patch.buildRoot !== undefined) updates.buildRoot = patch.buildRoot;
+    if (patch.autoDeploy !== undefined) updates.autoDeploy = patch.autoDeploy;
+    const rows = await this.db.update(apps).set(updates).where(eq(apps.id, id)).returning();
+    return rows[0] ?? null;
+  }
 }

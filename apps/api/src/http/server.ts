@@ -5,6 +5,13 @@ import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import { HTTPError } from "../lib/errors.js";
 
+// BigInt → string in all JSON responses. Postgres bigint columns
+// (github_installation_id, sign_count, deployment_logs.id) surface as
+// BigInt and JSON.stringify cannot serialise them natively.
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return (this as unknown as bigint).toString();
+};
+
 export type ServerOptions = {
   cookieSecret: string;
   corsOrigins?: string[];
