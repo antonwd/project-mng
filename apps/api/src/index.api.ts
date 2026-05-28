@@ -30,6 +30,7 @@ import { registerWsLogs } from "./http/routes/ws-logs.js";
 import { registerWsShell } from "./http/routes/ws-shell.js";
 import { registerGithubWebhook } from "./http/routes/github-webhook.js";
 import { registerGithubRoutes } from "./http/routes/github.js";
+import { registerAuditRoutes } from "./http/routes/audit.js";
 import Redis from "ioredis";
 
 async function main() {
@@ -64,6 +65,7 @@ async function main() {
   registerInvitesRoutes(app, { invites, audit, publicBaseUrl: cfg.publicBaseUrl });
   registerAppsRoutes(app, { apps: appsSvc, audit, db });
   registerGithubRoutes(app, { github });
+  registerAuditRoutes(app, { db });
   registerEnvVarsRoutes(app, { envs, audit });
   registerVolumesRoutes(app, { volumes, audit });
   registerDomainsRoutes(app, { domains: domainsSvc, audit, certIssueQueue: queues.certIssue });
