@@ -27,7 +27,7 @@ describe("apps routes", () => {
     const app = await createServer({ cookieSecret: "x".repeat(32) });
     const sessions = new SessionManager(db, { ttlDays: 7 });
     await app.register(authPlugin, { sessions });
-    registerAppsRoutes(app, { apps: new AppsService(db, { portMin: 14000, portMax: 14050 }), audit: new AuditLog(db) });
+    registerAppsRoutes(app, { apps: new AppsService(db, { portMin: 14000, portMax: 14050 }), audit: new AuditLog(db), db });
     const { sessionId } = await sessions.create({ userId: actor.id });
     const cookie = `pm_session=${sessionId}`;
 

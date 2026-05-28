@@ -61,7 +61,7 @@ async function main() {
   registerEnrollRoutes(app, { db });
   registerUsersRoutes(app, { db, audit });
   registerInvitesRoutes(app, { invites, audit, publicBaseUrl: cfg.publicBaseUrl });
-  registerAppsRoutes(app, { apps: appsSvc, audit });
+  registerAppsRoutes(app, { apps: appsSvc, audit, db });
   registerEnvVarsRoutes(app, { envs, audit });
   registerVolumesRoutes(app, { volumes, audit });
   registerDomainsRoutes(app, { domains: domainsSvc, audit, certIssueQueue: queues.certIssue });

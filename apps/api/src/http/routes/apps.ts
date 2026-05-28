@@ -1,10 +1,13 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import type { Database } from "../../db/client.js";
 import { AppsService } from "../../domain/apps.js";
 import { AuditLog } from "../../auth/audit.js";
 import { NotFound } from "../../lib/errors.js";
+import { deployments, domains } from "../../db/schema.js";
 
-export type AppsRoutesDeps = { apps: AppsService; audit: AuditLog };
+export type AppsRoutesDeps = { apps: AppsService; audit: AuditLog; db: Database };
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/;
 const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -25,10 +28,52 @@ const UpdateBody = z.object({
 });
 
 export function registerAppsRoutes(app: FastifyInstance, deps: AppsRoutesDeps) {
-  app.get("/api/apps", { preHandler: app.requireAuth }, async () => {
-    const rows = await deps.apps.listActive();
-    return { apps: rows };
-  });
+  app.get<{ Querystring: { include?: string } }>(
+    "/api/apps",
+    { preHandler: app.requireAuth },
+    async (req) => {
+      const rows = await deps.apps.listActive();
+      if (req.query.include !== "summary" || rows.length === 0) {
+        return { apps: rows };
+      }
+      const ids = rows.map((r) => r.id);
+      const domainCounts = await deps.db
+        .select({ appId: domains.appId, n: count() })
+        .from(domains)
+        .where(inArray(domains.appId, ids))
+        .groupBy(domains.appId);
+      const domainCountById = new Map(domainCounts.map((d) => [d.appId, Number(d.n)]));
+      // Latest deployment per app via a window-over-the-table query.
+      const lastDeploysResult = await deps.db.execute(sql`
+        SELECT DISTINCT ON (app_id)
+          app_id, id, status, queued_at, started_at, finished_at, commit_sha
+        FROM deployments
+        WHERE app_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+        ORDER BY app_id, queued_at DESC
+      `);
+      const lastDeploysRows = (lastDeploysResult as unknown as { rows: Array<{ app_id: string; id: string; status: string; queued_at: Date; started_at: Date | null; finished_at: Date | null; commit_sha: string }> }).rows;
+      const lastByApp = new Map(
+        lastDeploysRows.map((d) => [d.app_id, {
+          id: d.id,
+          status: d.status,
+          queuedAt: d.queued_at,
+          startedAt: d.started_at,
+          finishedAt: d.finished_at,
+          commitSha: d.commit_sha,
+        }]),
+      );
+      return {
+        apps: rows.map((r) => ({
+          ...r,
+          domainCount: domainCountById.get(r.id) ?? 0,
+          lastDeploy: lastByApp.get(r.id) ?? null,
+        })),
+      };
+    },
+  );
+
+  // Suppress unused-var on optional helpers.
+  void desc; void and; void eq; void deployments;
 
   app.post("/api/apps", { preHandler: app.requireAuth }, async (req) => {
     const body = CreateBody.parse(req.body);
