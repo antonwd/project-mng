@@ -16,9 +16,16 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Install nixpacks (auto-Dockerfile path for apps without their own).
+# NOTE: nixpacks ships a .deb only for amd64; arm64 is a musl tarball with
+# a different asset name. The release workflow currently builds amd64 only;
+# follow-up: branch on TARGETARCH and consume the tarball for arm64.
 ARG NIXPACKS_VERSION=1.29.0
 ARG TARGETARCH
 RUN ARCH="${TARGETARCH:-amd64}" \
+ && if [ "${ARCH}" = "arm64" ]; then \
+      echo "arm64 not yet supported in this image — see release.yml TODO" >&2; \
+      exit 1; \
+    fi \
  && curl -sSL "https://github.com/railwayapp/nixpacks/releases/download/v${NIXPACKS_VERSION}/nixpacks-v${NIXPACKS_VERSION}-${ARCH}.deb" -o /tmp/nixpacks.deb \
  && dpkg -i /tmp/nixpacks.deb \
  && rm /tmp/nixpacks.deb
