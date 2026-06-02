@@ -52,7 +52,7 @@ services:
     networks: [pm_internal]
 
   pm-api:
-    image: ghcr.io/projectmng/api:${VERSION}
+    image: ghcr.io/${IMAGE_OWNER}/api:${VERSION}
     restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
@@ -88,7 +88,7 @@ services:
     command: ["node", "dist/index.api.js"]
 
   pm-worker:
-    image: ghcr.io/projectmng/api:${VERSION}
+    image: ghcr.io/${IMAGE_OWNER}/api:${VERSION}
     restart: unless-stopped
     depends_on:
       pm-api: { condition: service_started }
@@ -120,7 +120,7 @@ services:
     command: ["node", "dist/index.worker.js"]
 
   pm-web:
-    image: ghcr.io/projectmng/web:${VERSION}
+    image: ghcr.io/${IMAGE_OWNER}/web:${VERSION}
     restart: unless-stopped
     depends_on:
       pm-api: { condition: service_started }

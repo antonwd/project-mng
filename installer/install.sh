@@ -92,7 +92,10 @@ fi
 # ─── resolve version + assets ────────────────────────────────────────────────
 
 log "resolving version"
-RELEASE_REPO="${PROJECTMNG_RELEASE_REPO:-projectmng/projectmng}"
+RELEASE_REPO="${PROJECTMNG_RELEASE_REPO:-antonwd/project-mng}"
+IMAGE_OWNER="${IMAGE_OWNER:-${RELEASE_REPO%%/*}}"
+log "release repo: $RELEASE_REPO"
+log "image owner: $IMAGE_OWNER (images: ghcr.io/$IMAGE_OWNER/{api,web})"
 if [[ -z "$VERSION" ]]; then
   VERSION="$(curl -fsSL "https://api.github.com/repos/${RELEASE_REPO}/releases/latest" | jq -r '.tag_name')"
 fi
@@ -192,6 +195,7 @@ if [[ ! -e "$ENV_FILE" ]]; then
   GITHUB_WEBHOOK_SECRET="$(random_b64url)"
   cat > "$ENV_FILE" <<ENV
 VERSION=$VERSION
+IMAGE_OWNER=$IMAGE_OWNER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 COOKIE_SECRET=$COOKIE_SECRET
 GITHUB_APP_ID=$GITHUB_APP_ID
@@ -206,8 +210,16 @@ ENV
   chmod 0400 "$ENV_FILE"
 else
   log "reusing existing .env"
+  # Make .env writable for the duration of the rewrite, then re-tighten.
+  chmod 0600 "$ENV_FILE"
   # Always rewrite VERSION on re-run so updates take effect.
   sed -i -E "s|^VERSION=.*|VERSION=$VERSION|" "$ENV_FILE"
+  if grep -q '^IMAGE_OWNER=' "$ENV_FILE"; then
+    sed -i -E "s|^IMAGE_OWNER=.*|IMAGE_OWNER=$IMAGE_OWNER|" "$ENV_FILE"
+  else
+    printf 'IMAGE_OWNER=%s\n' "$IMAGE_OWNER" >> "$ENV_FILE"
+  fi
+  chmod 0400 "$ENV_FILE"
 fi
 
 # ─── render docker-compose ───────────────────────────────────────────────────
