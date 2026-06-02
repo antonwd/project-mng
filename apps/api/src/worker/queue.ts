@@ -3,10 +3,12 @@ import { Queue, Worker, ConnectionOptions } from "bullmq";
 export type DeployJobData = { deploymentId: string };
 export type CertIssueJobData = { domainId: string };
 
+// BullMQ rejects queue names containing ":" (it uses ":" as the Redis key
+// namespace separator internally). Use dashes — the names are otherwise free-form.
 export const QUEUES = {
-  deploy: "pm:deploy",
-  certIssue: "pm:cert-issue",
-  certRenew: "pm:cert-renew",
+  deploy: "pm-deploy",
+  certIssue: "pm-cert-issue",
+  certRenew: "pm-cert-renew",
 } as const;
 
 function parseRedisUrl(url: string): { host: string; port: number; password?: string; username?: string } {
