@@ -225,11 +225,36 @@ fi
 # ─── render docker-compose ───────────────────────────────────────────────────
 
 log "rendering docker-compose.yml"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-COMPOSE_TMPL="${PROJECTMNG_COMPOSE_TMPL:-$SCRIPT_DIR/compose/docker-compose.yml.tmpl}"
-NGINX_TMPL="${PROJECTMNG_NGINX_TMPL:-$SCRIPT_DIR/nginx/pm-dashboard.conf.tmpl}"
-[[ -r "$COMPOSE_TMPL" ]] || die "missing compose template: $COMPOSE_TMPL"
-[[ -r "$NGINX_TMPL"   ]] || die "missing nginx template:   $NGINX_TMPL"
+
+# When this script is run from a checkout (the smoke harness, a dev re-run, or
+# someone who pinned PROJECTMNG_{COMPOSE,NGINX}_TMPL) we use the templates on
+# disk. When the script was piped from curl, $0 is "bash" and we have no repo
+# alongside us — fetch the templates from the same tag we're installing.
+SCRIPT_DIR=""
+if [[ "$0" != "bash" && -f "$0" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
+
+resolve_tmpl() {
+  local override="$1" relpath="$2" out="$3"
+  if [[ -n "$override" ]]; then
+    [[ -r "$override" ]] || die "missing template: $override"
+    echo "$override"
+    return
+  fi
+  if [[ -n "$SCRIPT_DIR" && -r "$SCRIPT_DIR/$relpath" ]]; then
+    echo "$SCRIPT_DIR/$relpath"
+    return
+  fi
+  curl -fsSL "https://raw.githubusercontent.com/${RELEASE_REPO}/${VERSION}/installer/${relpath}" -o "$out" \
+    || die "failed to fetch template installer/${relpath} from ${RELEASE_REPO}@${VERSION}"
+  echo "$out"
+}
+
+COMPOSE_TMPL="$(resolve_tmpl "${PROJECTMNG_COMPOSE_TMPL:-}" "compose/docker-compose.yml.tmpl" "$ASSETS_DIR/docker-compose.yml.tmpl")"
+NGINX_TMPL="$(resolve_tmpl   "${PROJECTMNG_NGINX_TMPL:-}"   "nginx/pm-dashboard.conf.tmpl"    "$ASSETS_DIR/pm-dashboard.conf.tmpl")"
+log "compose template: $COMPOSE_TMPL"
+log "nginx template:   $NGINX_TMPL"
 
 set -a
 # shellcheck disable=SC1090
