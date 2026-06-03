@@ -274,9 +274,12 @@ docker compose -f /opt/projectmng/docker-compose.yml up -d
 # ─── wait for pm-api + migrate ───────────────────────────────────────────────
 
 log "waiting for pm-api to come up"
+# Any HTTP response (including 401 — the expected reply to an unauthenticated
+# /api/me) means pm-api is alive. Drop -f so curl exits 0 on non-2xx; pipefail
+# was masking that path.
 for i in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:3001/api/me >/dev/null 2>&1 \
-     || curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3001/api/me 2>/dev/null | grep -q 401; then
+  code="$(curl -sS -o /dev/null --max-time 3 -w '%{http_code}' http://127.0.0.1:3001/api/me 2>/dev/null || echo 000)"
+  if [[ "$code" =~ ^[2-4][0-9][0-9]$ ]]; then
     break
   fi
   sleep 1
