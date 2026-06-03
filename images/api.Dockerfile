@@ -11,8 +11,21 @@ COPY apps/api ./
 RUN npm run build && npm prune --production
 
 FROM node:20-bookworm-slim AS runtime
+# Install docker-ce-cli from Docker's official Debian repo (the bookworm
+# docker.io package ships 20.10 which only speaks API 1.41 — modern dockerds
+# refuse it with "client version is too old. Minimum supported API version
+# is 1.44").
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git ca-certificates curl docker.io \
+ && apt-get install -y --no-install-recommends \
+      git ca-certificates curl gnupg lsb-release \
+ && install -m 0755 -d /etc/apt/keyrings \
+ && curl -fsSL https://download.docker.com/linux/debian/gpg \
+      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+ && chmod a+r /etc/apt/keyrings/docker.gpg \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" \
+      > /etc/apt/sources.list.d/docker.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends docker-ce-cli docker-buildx-plugin \
  && rm -rf /var/lib/apt/lists/*
 
 # Install nixpacks (auto-Dockerfile path for apps without their own).
