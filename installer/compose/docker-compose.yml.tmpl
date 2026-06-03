@@ -107,6 +107,11 @@ services:
       # path is just the daemon's HTTP /build, which the proxy permits via
       # BUILD=1. Pinned here so future docker upgrades don't silently flip it.
       DOCKER_BUILDKIT: "0"
+      # The projectmng user inside the container has no /etc/passwd entry,
+      # so HOME is empty and the docker CLI tries to mkdir /.docker — fails.
+      # Point HOME + DOCKER_CONFIG at a writable dir.
+      HOME: /tmp
+      DOCKER_CONFIG: /tmp/.docker
       GITHUB_APP_ID: ${GITHUB_APP_ID}
       GITHUB_APP_PRIVATE_KEY_PATH: /run/secrets/github-app.pem
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}

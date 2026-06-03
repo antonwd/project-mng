@@ -50,7 +50,9 @@ export async function runDeploy(data: { deploymentId: string }, deps: DeployDeps
     const networkName = `app_${app.id}`;
     try { await deps.docker.createNetwork(networkName); } catch { /* exists */ }
     const envs = new EnvVarsService(deps.db, deps.masterKey);
-    const env = await envs.resolveForRuntime(app.id);
+    // The container's published port is hardcoded to 3000 (see portBindings
+    // below), so default PORT=3000 unless the user explicitly overrode it.
+    const env: Record<string, string> = { PORT: "3000", ...(await envs.resolveForRuntime(app.id)) };
     const oldContainers = await deps.docker.listContainersByLabel("pm.app", app.id);
     for (const c of oldContainers) {
       try { await deps.docker.getContainer(c.Id).stop(); } catch { /* ignore */ }
