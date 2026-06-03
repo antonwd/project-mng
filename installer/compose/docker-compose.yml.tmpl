@@ -74,7 +74,7 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET}
       INTERNAL_PORT_MIN: "10000"
       INTERNAL_PORT_MAX: "19999"
-      NGINX_MANAGED_DIR: /etc/nginx/sites-enabled/managed
+      NGINX_MANAGED_DIR: /etc/nginx/projectmng-managed
       ACME_EMAIL: ${ACME_EMAIL}
       HTTP_PORT: "3000"
     user: "${PM_UID}:${PM_GID}"
@@ -108,7 +108,7 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET}
       INTERNAL_PORT_MIN: "10000"
       INTERNAL_PORT_MAX: "19999"
-      NGINX_MANAGED_DIR: /etc/nginx/sites-enabled/managed
+      NGINX_MANAGED_DIR: /etc/nginx/projectmng-managed
       ACME_EMAIL: ${ACME_EMAIL}
       HTTP_PORT: "3000"
     user: "${PM_UID}:${PM_GID}"

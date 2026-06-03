@@ -133,7 +133,18 @@ PM_GID="$(id -g projectmng)"
 
 install -d -m 0755                                /opt/projectmng /opt/projectmng/data
 install -d -m 0700 -o projectmng -g projectmng    /etc/projectmng
-install -d -m 0755                                /etc/nginx/sites-enabled/managed /var/www/_acme
+# Per-app vhost configs go here. NOT under sites-enabled/ — Debian's
+# nginx.conf does `include /etc/nginx/sites-enabled/*;` and chokes when
+# one of the matched paths is a directory.
+install -d -m 0755                                /etc/nginx/projectmng-managed /var/www/_acme
+# Pull those configs in via an include shim placed inside conf.d/, which
+# nginx.conf loads inside the http { } block.
+echo 'include /etc/nginx/projectmng-managed/*.conf;' > /etc/nginx/conf.d/projectmng-include.conf
+# Clean up the broken dir from earlier installer versions, if a previous
+# run created it as a directory (a real file with that name we leave alone).
+if [[ -d /etc/nginx/sites-enabled/managed && ! -L /etc/nginx/sites-enabled/managed ]]; then
+  rm -rf /etc/nginx/sites-enabled/managed
+fi
 install -d -m 0755 -o projectmng -g projectmng    /run/projectmng
 
 # ─── master key + GitHub App private key ─────────────────────────────────────
@@ -170,6 +181,7 @@ RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes
 Environment=PROJECTMNG_SOCKET_PATH=/run/projectmng/helper.sock
 Environment=PROJECTMNG_SOCKET_GROUP=projectmng
+Environment=PROJECTMNG_NGINX_CONFIG_DIR=/etc/nginx/projectmng-managed
 ExecStart=/usr/local/bin/projectmng-helper
 Restart=on-failure
 RestartSec=2s
@@ -177,13 +189,15 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
+ReadWritePaths=/run/projectmng /etc/nginx/projectmng-managed /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt /var/www/_acme
 
 [Install]
 WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
-systemctl enable --now projectmng-helper
+systemctl enable projectmng-helper
+systemctl restart projectmng-helper
 
 # ─── secrets + .env ──────────────────────────────────────────────────────────
 
