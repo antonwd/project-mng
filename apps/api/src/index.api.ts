@@ -33,12 +33,24 @@ import { registerGithubRoutes } from "./http/routes/github.js";
 import { registerAuditRoutes } from "./http/routes/audit.js";
 import { registerBootstrapRoutes } from "./http/routes/bootstrap.js";
 import Redis from "ioredis";
+import { promises as dns } from "node:dns";
 
 async function main() {
   const cfg = loadConfig();
   const { pool, db } = createDb(cfg.databaseUrl);
   const masterKey = loadMasterKey(cfg.masterKeyPath);
   const redis = new Redis(cfg.redisUrl, { maxRetriesPerRequest: null });
+
+  // Resolve the dashboard hostname once at startup — this is the IP we expect
+  // user-supplied custom domains to point at when they hit "Check DNS".
+  let expectedHostIp: string | undefined;
+  try {
+    const addrs = await dns.resolve4(cfg.webauthnRpId);
+    expectedHostIp = addrs[0];
+  } catch {
+    // DNS unavailable or hostname doesn't resolve — leave undefined; the
+    // domains route will require an explicit expectedIp in that case.
+  }
 
   const helper = new HelperClient(cfg.helperSocketPath);
   const docker = new DockerClient(cfg.dockerProxyUrl);
@@ -70,7 +82,7 @@ async function main() {
   registerBootstrapRoutes(app, { db, invites });
   registerEnvVarsRoutes(app, { envs, audit });
   registerVolumesRoutes(app, { volumes, audit });
-  registerDomainsRoutes(app, { domains: domainsSvc, audit, certIssueQueue: queues.certIssue });
+  registerDomainsRoutes(app, { domains: domainsSvc, audit, certIssueQueue: queues.certIssue, expectedHostIp });
   registerDeploymentsRoutes(app, { deployments: deploymentsSvc, apps: appsSvc, github, audit });
   registerWsLogs(app, { sessions, redis });
   registerWsShell(app, { sessions, docker, db, audit });
