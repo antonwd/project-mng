@@ -347,7 +347,12 @@ fi
 # ─── bootstrap enrollment token ──────────────────────────────────────────────
 
 log "generating bootstrap enrollment token"
-BOOTSTRAP=$(curl -fsS -X POST http://127.0.0.1:3001/api/admin/bootstrap || true)
+# Call from inside the pm-api container so the request originates from the
+# container's own 127.0.0.1 — the bootstrap endpoint enforces a loopback
+# check, and a docker compose port mapping from 127.0.0.1:3001 on the host
+# appears to pm-api as the bridge gateway IP (172.x.x.1), not loopback.
+BOOTSTRAP=$(docker compose -f /opt/projectmng/docker-compose.yml exec -T pm-api \
+  curl -sS -X POST http://127.0.0.1:3000/api/admin/bootstrap </dev/null || true)
 TOKEN=$(printf '%s' "$BOOTSTRAP" | jq -r '.token // empty')
 
 # Record installed version so projectmng update can compute the diff.
