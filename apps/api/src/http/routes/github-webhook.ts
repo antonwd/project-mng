@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { verifyGithubSignature } from "../../clients/github.js";
 import { Unauthorized } from "../../lib/errors.js";
 
@@ -16,16 +16,40 @@ export type GithubWebhookOpts = {
   onPush: (p: PushPayload) => Promise<void>;
 };
 
+declare module "fastify" {
+  interface FastifyRequest {
+    rawBody?: string;
+  }
+}
+
 export function registerGithubWebhook(app: FastifyInstance, opts: GithubWebhookOpts) {
-  app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => done(null, body));
+  // Replace Fastify's default JSON parser with one that ALSO stashes the raw
+  // body string on the request — the webhook handler needs the exact bytes
+  // for HMAC-SHA256 signature verification, but every other route still
+  // expects req.body to be a parsed object.
+  app.removeContentTypeParser("application/json");
+  app.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (req: FastifyRequest, rawBody, done) => {
+      const raw = rawBody as string;
+      req.rawBody = raw;
+      if (!raw) return done(null, undefined);
+      try {
+        done(null, JSON.parse(raw));
+      } catch (e) {
+        done(e as Error, undefined);
+      }
+    },
+  );
 
   app.post("/api/github/webhook", async (req, reply) => {
     const sig = String(req.headers["x-hub-signature-256"] ?? "");
-    const body = req.body as string;
-    if (!verifyGithubSignature(opts.secret, body, sig)) throw Unauthorized("invalid signature");
+    const rawBody = req.rawBody ?? "";
+    if (!verifyGithubSignature(opts.secret, rawBody, sig)) throw Unauthorized("invalid signature");
     const event = String(req.headers["x-github-event"] ?? "");
     if (event === "push") {
-      const data = JSON.parse(body) as {
+      const data = req.body as {
         ref: string;
         after: string;
         repository: { full_name: string };
