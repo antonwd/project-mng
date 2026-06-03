@@ -176,6 +176,11 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
+# Group= makes systemd create RuntimeDirectory as root:projectmng with
+# the configured mode. Without it the dir was root:root 0750 and the
+# pm-api / pm-worker containers (running as projectmng-group) couldn't
+# enter the dir to reach the helper socket.
+Group=projectmng
 RuntimeDirectory=projectmng
 RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes

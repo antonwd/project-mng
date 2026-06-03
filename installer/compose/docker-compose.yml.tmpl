@@ -102,6 +102,11 @@ services:
       # docker CLI / nixpacks shell out to dockerd; route them through the
       # same socket-proxy as dockerode so they don't need the raw unix socket.
       DOCKER_HOST: tcp://docker-socket-proxy:2375
+      # Force the legacy /build endpoint instead of buildkit. buildkit needs
+      # its own gRPC socket which the socket-proxy doesn't expose; the legacy
+      # path is just the daemon's HTTP /build, which the proxy permits via
+      # BUILD=1. Pinned here so future docker upgrades don't silently flip it.
+      DOCKER_BUILDKIT: "0"
       GITHUB_APP_ID: ${GITHUB_APP_ID}
       GITHUB_APP_PRIVATE_KEY_PATH: /run/secrets/github-app.pem
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
