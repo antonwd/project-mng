@@ -53,9 +53,13 @@ export async function runDeploy(data: { deploymentId: string }, deps: DeployDeps
     // The container's published port is hardcoded to 3000 (see portBindings
     // below), so default PORT=3000 unless the user explicitly overrode it.
     const env: Record<string, string> = { PORT: "3000", ...(await envs.resolveForRuntime(app.id)) };
+    // Stop AND remove old containers before creating the new one. Just
+    // stopping leaves the name slot occupied — re-deploying the same SHA
+    // (the container name is <slug>_<shortSha>) would then 409 on create.
     const oldContainers = await deps.docker.listContainersByLabel("pm.app", app.id);
     for (const c of oldContainers) {
       try { await deps.docker.getContainer(c.Id).stop(); } catch { /* ignore */ }
+      try { await deps.docker.getContainer(c.Id).remove({ force: true }); } catch { /* ignore */ }
     }
     const created = await deps.docker.createContainer({
       name: `${app.slug}_${dep.commitSha.slice(0, 12)}`,
@@ -92,10 +96,6 @@ export async function runDeploy(data: { deploymentId: string }, deps: DeployDeps
       imageTag: tag,
       boundPort: app.internalPort,
     }).where(eq(deployments.id, dep.id));
-
-    for (const c of oldContainers) {
-      try { await deps.docker.getContainer(c.Id).remove({ force: true }); } catch { /* ignore */ }
-    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     await deps.db.update(deployments).set({
