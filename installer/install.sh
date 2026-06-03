@@ -224,6 +224,7 @@ WEBAUTHN_RP_ID=$DOMAIN
 ACME_EMAIL=$ADMIN_EMAIL
 PM_UID=$PM_UID
 PM_GID=$PM_GID
+DOCKER_GID=$(getent group docker | cut -d: -f3)
 ENV
   chown projectmng:projectmng "$ENV_FILE"
   chmod 0400 "$ENV_FILE"
@@ -237,6 +238,12 @@ else
     sed -i -E "s|^IMAGE_OWNER=.*|IMAGE_OWNER=$IMAGE_OWNER|" "$ENV_FILE"
   else
     printf 'IMAGE_OWNER=%s\n' "$IMAGE_OWNER" >> "$ENV_FILE"
+  fi
+  DOCKER_GID_VAL=$(getent group docker | cut -d: -f3)
+  if grep -q '^DOCKER_GID=' "$ENV_FILE"; then
+    sed -i -E "s|^DOCKER_GID=.*|DOCKER_GID=$DOCKER_GID_VAL|" "$ENV_FILE"
+  else
+    printf 'DOCKER_GID=%s\n' "$DOCKER_GID_VAL" >> "$ENV_FILE"
   fi
   chmod 0400 "$ENV_FILE"
 fi

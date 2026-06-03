@@ -120,10 +120,19 @@ services:
       ACME_EMAIL: ${ACME_EMAIL}
       HTTP_PORT: "3000"
     user: "${PM_UID}:${PM_GID}"
+    # nixpacks and `docker build` use the buildkit gRPC client, which only
+    # speaks over /var/run/docker.sock — the socket-proxy can't proxy gRPC,
+    # only the HTTP daemon API. Mount the raw socket and add the host's
+    # docker GID so the unprivileged projectmng user inside the container
+    # can use it. pm-api still goes through the proxy for runtime container
+    # ops; only build-time tools touch the raw socket.
+    group_add:
+      - "${DOCKER_GID}"
     volumes:
       - /etc/projectmng/master.key:/run/secrets/master.key:ro
       - /etc/projectmng/github-app.pem:/run/secrets/github-app.pem:ro
       - /run/projectmng:/run/projectmng
+      - /var/run/docker.sock:/var/run/docker.sock
     networks: [pm_internal]
     command: ["node", "dist/index.worker.js"]
 
