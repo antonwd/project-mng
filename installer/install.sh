@@ -287,7 +287,10 @@ for i in $(seq 1 60); do
 done
 
 log "running database migrations"
-docker compose -f /opt/projectmng/docker-compose.yml exec -T pm-api npm run db:migrate
+# Important: </dev/null prevents docker compose exec from inheriting stdin.
+# When install.sh is run via `curl ... | sudo bash`, the rest of the script
+# IS stdin — letting exec consume it makes bash silently exit afterwards.
+docker compose -f /opt/projectmng/docker-compose.yml exec -T pm-api npm run db:migrate </dev/null
 
 # ─── nginx + cert ────────────────────────────────────────────────────────────
 
