@@ -38,7 +38,7 @@ The aesthetic — neutral shadcn palette, Geist typography, light/dark autodetec
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 1 | Mobile nav = shadcn `Sheet` slide-in from left, hamburger trigger in header | Standard dashboard pattern; `Sheet` already installed; scales if nav grows. |
-| 2 | Tooltip trigger = visible `HelpCircle` "?" icon at `size-3.5` `text-muted-foreground` | The only pattern that signals "help is here" on touch devices. Required by the full mobile parity goal. |
+| 2 | Hint trigger = visible `HelpCircle` "?" icon at `size-3.5` `text-muted-foreground` | The only pattern that signals "help is here" on touch devices. Required by the full mobile parity goal. |
 | 3 | Recent activity = banner band at top of `/apps`, hidden when empty | No new route, no new sidebar entry, no new endpoint — re-renders the existing audit data. |
 | 4 | Activity feed content = deploys + admin events from the audit log, last 8 after filter | Audit log is already the source of truth; filtering is cheap. |
 | 5 | Tests = Vitest on new shared components + one Playwright 375px no-horizontal-scroll smoke per route | Highest-ROI guard against mobile regression without a full multi-viewport e2e matrix. |
@@ -68,8 +68,8 @@ Tailwind breakpoints: `md` is the layout regime switch. `sm` is used for sub-com
 
 | Primitive | Location | Purpose |
 |---|---|---|
-| `Tooltip` (shadcn install) | `components/ui/tooltip.tsx` | Radix-backed tooltip; hover on desktop, tap-to-open on touch. Provider mounted in root layout. |
-| `HelpHint` | `components/common/help-hint.tsx` | `<HelpCircle size-3.5 text-muted-foreground />` wrapped in `Tooltip`. Children are the content; renders inline next to labels and actions. |
+| `Hint` (new wrapper around `@base-ui/react/popover`) | `components/ui/hint.tsx` | base-ui Popover configured `openOnHover` with `delay={200}` — hovers like a tooltip on desktop, opens on tap on touch. base-ui's `Tooltip` primitive is hover-only by design and not used here. |
+| `HelpHint` | `components/common/help-hint.tsx` | `<HelpCircle size-3.5 text-muted-foreground />` wrapped in `Hint`. Children are the content; renders inline next to labels and actions. |
 | `CopyButton` | `components/common/copy-button.tsx` | Truncated value display + copy icon → `navigator.clipboard.writeText` → success toast. `variant="inline"` and `variant="block"`. |
 | `MobileNav` | `components/nav/mobile-nav.tsx` | Hamburger button + `Sheet` wrapper. Shares `nav-items.ts` with `Sidebar`. Closes on route change. |
 | `StatusDot` | `components/common/status-dot.tsx` | Colored dot, pulse animation when in-flight. Colors: green (running), amber (deploying/queued), red (failed), gray (stopped). |
@@ -118,11 +118,11 @@ Plan 2 retrofits the high-traffic surfaces (dashboard layout, apps list, app det
 - `StatusDot` consumes either the in-flight state or the terminal `lastDeploy.status` and animates the pulse via CSS (`animate-pulse` from `tw-animate-css`).
 - No new polling. Server components re-render on navigation; the user who just kicked off a deploy lands back on `/apps` and sees the pulse.
 
-### 4.6 Tooltip mechanics
+### 4.6 Hint mechanics
 
-- `TooltipProvider` mounted once in `src/app/layout.tsx` next to `Toaster`. `delayDuration={200}`.
-- Hover on desktop, tap-to-open on touch. Radix's `Tooltip` performs this coercion automatically; no separate `Popover` fork needed.
-- Tooltip content is plain text or rich children. The convention is one short sentence per HelpHint, plus optional `<code>` and `<a>` for technical references.
+- Hints are implemented as base-ui `Popover` with `openOnHover`, `delay={200}`. The Popover opens on hover (desktop) and on tap (touch) using a single primitive — no media query, no fork.
+- No global provider needed (base-ui Popover is self-contained, unlike Radix Tooltip which needs a TooltipProvider).
+- Hint content is plain text or rich children. The convention is one short sentence per `HelpHint`, plus optional `<code>` and `<a>` for technical references.
 
 ### 4.7 Empty / loading / error language
 
@@ -169,7 +169,7 @@ The smoke landing point is Plan 2 (after layout + apps list + app detail header 
 Plans live under `docs/superpowers/plans/`. Naming follows the existing `YYYY-MM-DD-<topic>.md` convention.
 
 ### Plan 1 — Primitives
-- Install Tooltip (`npx shadcn add tooltip`); mount `TooltipProvider` in root layout.
+- Create `Hint` (base-ui Popover wrapper with `openOnHover`).
 - Create `HelpHint`, `CopyButton`, `StatusDot`, `MobileNav`, `EmptyState`, `LoadingSkeleton`, `ErrorState`, `useOptimisticAction`, `toastResult`, `.touch-target` utility, `nav-items.ts`.
 - Add Vitest test file per primitive (six files listed above).
 - No consumer code changes. No production user-visible diff.
@@ -192,7 +192,7 @@ Plans live under `docs/superpowers/plans/`. Naming follows the existing `YYYY-MM
 - **Audit action naming.** The recent activity filter assumes specific action strings (`deployment.succeeded` etc.). Plan 4 must read `actions/audit.ts` and the audit table directly before binding the filter list.
 - **`listApps` in-flight coverage.** If `lastDeploy` does not already cover in-flight states, Plan 4 must extend the server action — purely additive change, no schema migration needed since the deployments table already records the state.
 - **Next.js v16 idiom drift.** Per `apps/web/AGENTS.md`, Next.js v16 has breaking changes from training data. Each plan must consult `node_modules/next/dist/docs/` before introducing new patterns (Suspense usage, server-action result shapes, error.tsx conventions).
-- **Radix Tooltip touch behavior.** Assumed to coerce to tap-on-touch automatically. If a real device test in Plan 1 finds otherwise, fall back to wrapping `HelpHint` in a `Popover` for touch and `Tooltip` for hover via media query — Plan 1 should include a manual touch-device test as part of its acceptance.
+- **Hint touch behavior.** Resolved during Plan 1 prep: this project's shadcn `base-nova` style is backed by `@base-ui/react`, not Radix. base-ui's `Tooltip` is hover-only by design, so `Hint` wraps `@base-ui/react/popover` with `openOnHover={true}` and `delay={200}` — a single primitive that hovers on desktop and taps on touch. Plan 1 still includes a manual touch-device test as acceptance.
 - **shadcn `form` v4.8.x no-op.** Already documented in the project memory; no `form` component is needed in this pass.
 - **Per-app shell desktop-only fallback.** XTerm at narrow widths is unusable; rendering an `ErrorState` is correct UX but means a real feature is desktop-only. This is an explicit accepted limitation, called out in the help text.
 
