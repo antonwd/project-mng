@@ -19,10 +19,6 @@ export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
@@ -45,6 +41,7 @@ export function MobileNav() {
                 key={it.href}
                 href={it.href}
                 data-active={active}
+                onClick={() => setOpen(false)}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted touch-target",
                   active && "bg-muted font-medium",
