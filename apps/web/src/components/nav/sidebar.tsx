@@ -1,22 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Users, ScrollText, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const items = [
-  { href: "/apps", label: "Apps", icon: Boxes },
-  { href: "/users", label: "Users", icon: Users },
-  { href: "/audit", label: "Audit log", icon: ScrollText },
-  { href: "/account", label: "Account", icon: UserCircle },
-];
+import { NAV_ITEMS } from "./nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="border-r bg-muted/30 p-4 space-y-1">
       <div className="font-semibold px-2 py-3 text-lg">projectMng</div>
-      {items.map((it) => {
+      {NAV_ITEMS.map((it) => {
         const active = pathname?.startsWith(it.href) ?? false;
         const Icon = it.icon;
         return (
