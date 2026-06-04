@@ -2,8 +2,7 @@
 
 import { useOptimistic, useTransition, useCallback } from "react";
 import { toast } from "sonner";
-
-type ActionResult = { ok: true } | { ok: false; error: string };
+import type { ActionResult } from "@/lib/toast";
 
 type Options<Item, K> = {
   initial: Item[];
