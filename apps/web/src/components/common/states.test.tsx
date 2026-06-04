@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Boxes } from "lucide-react";
 import { EmptyState, LoadingSkeleton, ErrorState } from "./states";
 
