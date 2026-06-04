@@ -28,7 +28,7 @@ export function CopyButton({ value, label, variant = "inline", className }: Copy
       onClick={handleCopy}
       aria-label={`Copy ${label}`}
       className={cn(
-        "inline-flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs font-mono text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "inline-flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs font-mono text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
         variant === "block" && "w-full justify-between",
         className,
       )}
