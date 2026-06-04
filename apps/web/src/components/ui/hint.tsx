@@ -17,6 +17,7 @@ function HintTrigger({
       data-slot="hint-trigger"
       openOnHover
       delay={200}
+      closeDelay={150}
       {...props}
     >
       {children}
