@@ -46,6 +46,7 @@ describe("ErrorState", () => {
   it("renders title and body", () => {
     render(<ErrorState title="Something went wrong">try again</ErrorState>);
     expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
+    expect(screen.getByText(/try again/)).toBeInTheDocument();
   });
 
   it("invokes the retry callback when retry button is clicked", async () => {
