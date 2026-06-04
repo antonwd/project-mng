@@ -57,24 +57,41 @@ describe("useOptimisticAction", () => {
     errorMock.mockClear();
   });
 
-  it("adds an item optimistically and fires success toast", async () => {
+  it("adds an item optimistically, calls the action, fires success toast, and persists once parent re-renders with new initial", async () => {
     const user = userEvent.setup();
     const addAction = vi.fn().mockResolvedValue({ ok: true });
     const removeAction = vi.fn().mockResolvedValue({ ok: true });
-    render(
+    const { rerender } = render(
       <Harness
         initial={[{ key: "A", value: "one" }]}
         addAction={addAction}
         removeAction={removeAction}
       />,
     );
+
     await user.click(screen.getByText("add B"));
-    expect(await screen.findByText("B=two")).toBeInTheDocument();
+
+    // The action was called with the new item
     expect(addAction).toHaveBeenCalledWith({ key: "B", value: "two" });
+    // The success toast fired
     expect(successMock).toHaveBeenCalledWith("Added");
+
+    // Simulate the server-side revalidation: parent re-renders with updated initial
+    rerender(
+      <Harness
+        initial={[
+          { key: "A", value: "one" },
+          { key: "B", value: "two" },
+        ]}
+        addAction={addAction}
+        removeAction={removeAction}
+      />,
+    );
+
+    expect(await screen.findByText("B=two")).toBeInTheDocument();
   });
 
-  it("reverts the item and fires error toast when add fails", async () => {
+  it("reverts the optimistic add and fires error toast when the action fails", async () => {
     const user = userEvent.setup();
     const addAction = vi.fn().mockResolvedValue({ ok: false, error: "duplicate" });
     const removeAction = vi.fn();
@@ -85,29 +102,43 @@ describe("useOptimisticAction", () => {
         removeAction={removeAction}
       />,
     );
+
     await user.click(screen.getByText("add B"));
-    // Eventually reverts
+
     await act(async () => {
       await Promise.resolve();
     });
+
     expect(screen.queryByText("B=two")).not.toBeInTheDocument();
     expect(errorMock).toHaveBeenCalledWith("Add failed: duplicate");
   });
 
-  it("removes an item optimistically and fires success toast", async () => {
+  it("removes an item optimistically, calls the action, fires success toast, and persists once parent re-renders with new initial", async () => {
     const user = userEvent.setup();
     const addAction = vi.fn();
     const removeAction = vi.fn().mockResolvedValue({ ok: true });
-    render(
+    const { rerender } = render(
       <Harness
         initial={[{ key: "A", value: "one" }]}
         addAction={addAction}
         removeAction={removeAction}
       />,
     );
+
     await user.click(screen.getByText("remove A"));
-    expect(screen.queryByText("A=one")).not.toBeInTheDocument();
+
     expect(removeAction).toHaveBeenCalledWith("A");
     expect(successMock).toHaveBeenCalledWith("Removed");
+
+    // Simulate revalidation: A is now absent
+    rerender(
+      <Harness
+        initial={[]}
+        addAction={addAction}
+        removeAction={removeAction}
+      />,
+    );
+
+    expect(screen.queryByText("A=one")).not.toBeInTheDocument();
   });
 });

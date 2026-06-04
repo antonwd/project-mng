@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition, useCallback, useState, useEffect } from "react";
+import { useOptimistic, useTransition, useCallback } from "react";
 import { toast } from "sonner";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
@@ -29,16 +29,8 @@ export function useOptimisticAction<Item, K>({
   keyFn,
   toastMessages,
 }: Options<Item, K>) {
-  // committed tracks the real server state (initially equal to `initial`)
-  const [committed, setCommitted] = useState<Item[]>(initial);
-
-  // keep committed in sync when initial changes (e.g. after revalidatePath)
-  useEffect(() => {
-    setCommitted(initial);
-  }, [initial]);
-
   const [items, applyOptimistic] = useOptimistic<Item[], OptimisticOp<Item, K>>(
-    committed,
+    initial,
     (current, op) => {
       if (op.kind === "add") return [...current, op.item];
       return current.filter((i) => keyFn(i) !== op.key);
@@ -52,7 +44,6 @@ export function useOptimisticAction<Item, K>({
         applyOptimistic({ kind: "add", item });
         const result = await addAction(item);
         if (result.ok) {
-          setCommitted((prev) => [...prev, item]);
           toast.success(toastMessages.addSuccess);
         } else {
           toast.error(`${toastMessages.addErrorPrefix}: ${result.error}`);
@@ -68,14 +59,13 @@ export function useOptimisticAction<Item, K>({
         applyOptimistic({ kind: "remove", key });
         const result = await removeAction(key);
         if (result.ok) {
-          setCommitted((prev) => prev.filter((i) => keyFn(i) !== key));
           toast.success(toastMessages.removeSuccess);
         } else {
           toast.error(`${toastMessages.removeErrorPrefix}: ${result.error}`);
         }
       });
     },
-    [removeAction, applyOptimistic, keyFn, toastMessages.removeSuccess, toastMessages.removeErrorPrefix],
+    [removeAction, applyOptimistic, toastMessages.removeSuccess, toastMessages.removeErrorPrefix],
   );
 
   return { items, add, remove, pending };
