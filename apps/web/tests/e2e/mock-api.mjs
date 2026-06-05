@@ -6,7 +6,7 @@ import { createServer } from "node:http";
 const port = Number(process.env.MOCK_API_PORT ?? 3001);
 
 const state = {
-  users: [{ id: "user-1", email: "smoke@a.com", totpEnabled: true }],
+  users: [{ id: "user-1", email: "smoke@a.com", totpEnabled: true, createdAt: "2025-01-01T00:00:00.000Z" }],
   apps: [],
   deployments: [],
   installations: [{ id: 42, account: "smoke-org" }],
