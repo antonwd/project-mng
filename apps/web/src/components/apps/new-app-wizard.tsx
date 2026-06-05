@@ -74,7 +74,13 @@ export function NewAppWizard({ installations }: Props) {
             <div>
               <Label>GitHub installation</Label>
               <Select value={installationId} onValueChange={(v) => setInstallationId(v ?? "")}>
-                <SelectTrigger><SelectValue placeholder="Choose installation" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Choose installation">
+                  {(value: string | null) =>
+                    value
+                      ? installations.find((i) => i.id.toString() === value)?.account ?? value
+                      : "Choose installation"
+                  }
+                </SelectValue></SelectTrigger>
                 <SelectContent>
                   {installations.map((i) => (
                     <SelectItem key={i.id} value={i.id.toString()}>{i.account}</SelectItem>
@@ -88,7 +94,13 @@ export function NewAppWizard({ installations }: Props) {
                 <div className="text-sm text-muted-foreground py-2">Loading repos…</div>
               ) : (
                 <Select value={selectedRepo} onValueChange={(v) => pickRepo(v ?? "")}>
-                  <SelectTrigger><SelectValue placeholder="Choose repo" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Choose repo">
+                    {(value: string | null) =>
+                      value
+                        ? repos.find((r) => r.fullName === value)?.fullName ?? value
+                        : "Choose repo"
+                    }
+                  </SelectValue></SelectTrigger>
                   <SelectContent>
                     {repos.map((r) => (
                       <SelectItem key={r.id} value={r.fullName}>{r.fullName}</SelectItem>
