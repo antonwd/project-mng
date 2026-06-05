@@ -41,7 +41,7 @@ export function DomainAttachForm({ appId }: { appId: string }) {
         <Button onClick={submit} disabled={busy || !hostname}>{busy ? "Attaching…" : "Attach domain"}</Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        After attaching, point the hostname&apos;s A record at your VPS, then click &ldquo;Check DNS&rdquo; on the row to advance the cert state.
+        DNS propagation can take a few minutes. The cert state advances automatically once the A record resolves.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </Card>

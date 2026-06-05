@@ -177,7 +177,6 @@ export function NewAppWizard({ installations }: Props) {
                   Auto-deploy on push
                   <HelpHint>Off by default. When on, every push to the default branch triggers a deploy.</HelpHint>
                 </Label>
-                <p className="text-xs text-muted-foreground">Off by default. Each push to the default branch will trigger a deploy when enabled.</p>
               </div>
               <Switch id="autoDeploy" checked={autoDeploy} onCheckedChange={setAutoDeploy} />
             </div>

@@ -61,7 +61,6 @@ export function SettingsPanel({ app }: { app: AppSummary }) {
                 When on, every push to the default branch triggers a deploy. Off by default for predictability.
               </HelpHint>
             </Label>
-            <p className="text-xs text-muted-foreground">When on, every push to the default branch is deployed automatically.</p>
           </div>
           <Switch id="autoDeploy" checked={autoDeploy} onCheckedChange={setAutoDeploy} />
         </div>
