@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,16 +9,19 @@ import { HelpHint } from "@/components/common/help-hint";
 import { EmptyState } from "@/components/common/states";
 import { HardDrive } from "lucide-react";
 import { useOptimisticAction } from "@/hooks/use-optimistic-action";
-import { fromMaybeError, fromThrowing } from "@/lib/action-result";
+import { fromThrowing } from "@/lib/action-result";
 import { addVolumeAction, removeVolumeAction, type Volume } from "@/actions/volumes";
 
 export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volume[] }) {
+  const router = useRouter();
   const [mountPath, setMountPath] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [adding, startAddTransition] = useTransition();
 
-  const { items, add, remove, pending } = useOptimisticAction<Volume, string>({
+  const { items, remove, pending: removing } = useOptimisticAction<Volume, string>({
     initial: volumes,
     keyFn: (v) => v.mountPath,
-    addAction: (v) => fromMaybeError(() => addVolumeAction(appId, v.mountPath)),
+    addAction: () => Promise.resolve({ ok: true as const }),
     removeAction: (mp) => fromThrowing(() => removeVolumeAction(appId, mp)),
     toastMessages: {
       addSuccess: "Volume added",
@@ -29,9 +33,18 @@ export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volum
 
   function submit() {
     if (!mountPath) return;
-    add({ id: "pending", appId, mountPath, dockerVolumeName: "pending" } as Volume);
-    setMountPath("");
+    setError(null);
+    startAddTransition(async () => {
+      const res = await addVolumeAction(appId, mountPath);
+      if (res.error) setError(res.error);
+      else {
+        setMountPath("");
+        router.refresh();
+      }
+    });
   }
+
+  const busy = adding || removing;
 
   return (
     <div className="space-y-3">
@@ -45,8 +58,9 @@ export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volum
           </Label>
           <Input id="mount" value={mountPath} onChange={(e) => setMountPath(e.target.value)} placeholder="/data" />
         </div>
-        <Button onClick={submit} disabled={pending || !mountPath}>{pending ? "Adding…" : "Add volume"}</Button>
+        <Button onClick={submit} disabled={busy || !mountPath}>{adding ? "Adding…" : "Add volume"}</Button>
       </Card>
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {items.length === 0 ? (
         <EmptyState icon={HardDrive} title="No volumes attached">
           Add a mount path above to persist data across container restarts.
@@ -62,7 +76,7 @@ export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volum
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={pending}
+                disabled={busy}
                 onClick={() => {
                   if (!confirm(`Remove ${v.mountPath}? Volume data is not deleted from the host.`)) return;
                   remove(v.mountPath);
