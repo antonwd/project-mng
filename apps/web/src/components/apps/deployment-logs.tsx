@@ -28,11 +28,11 @@ export function DeploymentLogs({ deploymentId, initialLines, status }: Props) {
   }, [lines]);
 
   return (
-    <div ref={ref} className="font-mono text-xs bg-zinc-950 text-zinc-100 rounded-md p-4 h-[60vh] overflow-y-auto">
+    <div ref={ref} className="font-mono text-xs bg-zinc-950 text-zinc-100 rounded-md p-4 min-h-[40vh] max-h-[70vh] overflow-y-auto overflow-x-auto">
       {lines.length === 0 ? (
         <div className="text-zinc-500">Waiting for logs…</div>
       ) : (
-        lines.map((l, i) => <div key={i} className="whitespace-pre-wrap">{l}</div>)
+        lines.map((l, i) => <div key={i} className="whitespace-pre">{l}</div>)
       )}
     </div>
   );
