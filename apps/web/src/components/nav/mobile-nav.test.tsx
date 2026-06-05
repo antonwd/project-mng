@@ -37,6 +37,6 @@ describe("MobileNav", () => {
     render(<MobileNav />);
     await user.click(screen.getByRole("button", { name: /open menu/i }));
     const usersLink = await screen.findByRole("link", { name: /users/i });
-    expect(usersLink).toHaveAttribute("data-active", "true");
+    expect(usersLink).toHaveAttribute("data-active");
   });
 });

@@ -40,7 +40,7 @@ export function MobileNav() {
               <Link
                 key={it.href}
                 href={it.href}
-                data-active={active}
+                data-active={active || undefined}
                 onClick={() => setOpen(false)}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted touch-target",

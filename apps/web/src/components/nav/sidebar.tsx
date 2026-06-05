@@ -16,6 +16,7 @@ export function Sidebar() {
           <Link
             key={it.href}
             href={it.href}
+            data-active={active || undefined}
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted",
               active && "bg-muted font-medium",
