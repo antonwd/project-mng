@@ -70,7 +70,8 @@ export async function RecentActivityBanner() {
               <div className="flex items-center gap-3 px-4 py-2 text-sm">
                 <Badge variant="secondary" className="font-mono text-xs">{e.action}</Badge>
                 <span className="truncate flex-1 min-w-0">
-                  {actionLabel(e.action)}
+                  <span className="font-mono text-xs text-muted-foreground">{e.actorUserId?.slice(0, 8) ?? "system"}</span>
+                  {" "}{actionLabel(e.action)}
                   {e.targetId && <span className="text-muted-foreground"> · {e.targetType}:{e.targetId.slice(0, 8)}</span>}
                 </span>
                 <span className="text-xs text-muted-foreground shrink-0">
