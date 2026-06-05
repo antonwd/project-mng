@@ -5,8 +5,9 @@ import { listApps } from "@/actions/apps";
 import { formatDistanceToNow } from "date-fns";
 import { StatusDot } from "@/components/common/status-dot";
 import { EmptyState } from "@/components/common/states";
-import { Boxes } from "lucide-react";
 import { statusToDot } from "@/lib/status";
+import { Boxes } from "lucide-react";
+import { RecentActivityBanner } from "@/components/dashboard/recent-activity";
 
 export default async function AppsPage() {
   const apps = await listApps();
@@ -16,6 +17,7 @@ export default async function AppsPage() {
         <h1 className="text-2xl font-semibold">Apps</h1>
         <Link href="/apps/new"><Button>New app</Button></Link>
       </div>
+      <RecentActivityBanner />
       {apps.length === 0 ? (
         <EmptyState
           icon={Boxes}
