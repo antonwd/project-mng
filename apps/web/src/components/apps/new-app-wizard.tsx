@@ -74,7 +74,7 @@ export function NewAppWizard({ installations }: Props) {
             <div>
               <Label>GitHub installation</Label>
               <Select value={installationId} onValueChange={(v) => setInstallationId(v ?? "")}>
-                <SelectTrigger><SelectValue placeholder="Choose installation">
+                <SelectTrigger><SelectValue>
                   {(value: string | null) =>
                     value
                       ? installations.find((i) => i.id.toString() === value)?.account ?? value
@@ -94,7 +94,7 @@ export function NewAppWizard({ installations }: Props) {
                 <div className="text-sm text-muted-foreground py-2">Loading repos…</div>
               ) : (
                 <Select value={selectedRepo} onValueChange={(v) => pickRepo(v ?? "")}>
-                  <SelectTrigger><SelectValue placeholder="Choose repo">
+                  <SelectTrigger><SelectValue>
                     {(value: string | null) =>
                       value
                         ? repos.find((r) => r.fullName === value)?.fullName ?? value
