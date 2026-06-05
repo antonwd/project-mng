@@ -30,6 +30,11 @@ test("mobile (375px): no horizontal scroll on top-level routes", async ({ page }
   await login(page);
   await assertNoHorizontalScroll(page, "/apps (empty)");
 
+  // The recent-activity banner should render in mobile-collapsed form (single line "N recent events · ...")
+  // and the desktop "Recent activity" heading should NOT be visible at 375px.
+  await expect(page.getByText(/recent event/i).first()).toBeVisible();
+  await expect(page.getByText("Recent activity")).not.toBeVisible();
+
   await page.goto("/users");
   await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
   await assertNoHorizontalScroll(page, "/users");
