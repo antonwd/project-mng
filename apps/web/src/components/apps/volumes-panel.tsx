@@ -5,17 +5,36 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpHint } from "@/components/common/help-hint";
+import { EmptyState } from "@/components/common/states";
+import { HardDrive } from "lucide-react";
+import { useOptimisticAction } from "@/hooks/use-optimistic-action";
+import { fromThrowing } from "@/lib/action-result";
 import { addVolumeAction, removeVolumeAction, type Volume } from "@/actions/volumes";
 
 export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volume[] }) {
   const router = useRouter();
   const [mountPath, setMountPath] = useState("");
-  const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [adding, startAddTransition] = useTransition();
 
-  function add() {
+  const { items, remove, pending: removing } = useOptimisticAction<Volume, string>({
+    initial: volumes,
+    keyFn: (v) => v.mountPath,
+    addAction: () => Promise.resolve({ ok: true as const }),
+    removeAction: (mp) => fromThrowing(() => removeVolumeAction(appId, mp)),
+    toastMessages: {
+      addSuccess: "Volume added",
+      addErrorPrefix: "Add failed",
+      removeSuccess: "Volume removed",
+      removeErrorPrefix: "Remove failed",
+    },
+  });
+
+  function submit() {
+    if (!mountPath) return;
     setError(null);
-    startTransition(async () => {
+    startAddTransition(async () => {
       const res = await addVolumeAction(appId, mountPath);
       if (res.error) setError(res.error);
       else {
@@ -25,25 +44,34 @@ export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volum
     });
   }
 
+  const busy = adding || removing;
+
   return (
     <div className="space-y-3">
       <Card className="p-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
         <div>
-          <Label htmlFor="mount">Mount path</Label>
+          <Label htmlFor="mount" className="flex items-center gap-1">
+            Mount path
+            <HelpHint>
+              Absolute path inside the container. A Docker named volume is created and mounted here. Data persists across container restarts.
+            </HelpHint>
+          </Label>
           <Input id="mount" value={mountPath} onChange={(e) => setMountPath(e.target.value)} placeholder="/data" />
         </div>
-        <Button onClick={add} disabled={busy || !mountPath}>{busy ? "Adding…" : "Add volume"}</Button>
+        <Button onClick={submit} disabled={busy || !mountPath}>{adding ? "Adding…" : "Add volume"}</Button>
       </Card>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {volumes.length === 0 ? (
-        <Card className="p-6 text-center text-muted-foreground text-sm">No volumes attached.</Card>
+      {items.length === 0 ? (
+        <EmptyState icon={HardDrive} title="No volumes attached">
+          Add a mount path above to persist data across container restarts.
+        </EmptyState>
       ) : (
         <Card className="divide-y">
-          {volumes.map((v) => (
-            <div key={v.id} className="flex items-center justify-between gap-3 p-3">
+          {items.map((v) => (
+            <div key={v.mountPath} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3">
               <div className="min-w-0">
-                <div className="font-mono text-sm">{v.mountPath}</div>
-                <div className="text-xs text-muted-foreground font-mono">{v.dockerVolumeName}</div>
+                <div className="font-mono text-sm truncate">{v.mountPath}</div>
+                <div className="text-xs text-muted-foreground font-mono truncate">{v.dockerVolumeName}</div>
               </div>
               <Button
                 variant="ghost"
@@ -51,10 +79,7 @@ export function VolumesPanel({ appId, volumes }: { appId: string; volumes: Volum
                 disabled={busy}
                 onClick={() => {
                   if (!confirm(`Remove ${v.mountPath}? Volume data is not deleted from the host.`)) return;
-                  startTransition(async () => {
-                    await removeVolumeAction(appId, v.mountPath);
-                    router.refresh();
-                  });
+                  remove(v.mountPath);
                 }}
               >
                 Remove

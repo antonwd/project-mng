@@ -6,6 +6,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeployButton } from "@/components/apps/deploy-button";
 import { formatDistanceToNow } from "date-fns";
+import { StatusDot } from "@/components/common/status-dot";
+import { CopyButton } from "@/components/common/copy-button";
+import { HelpHint } from "@/components/common/help-hint";
+import { statusToDot } from "@/lib/status";
 
 type Params = Promise<{ slug: string }>;
 
@@ -22,15 +26,14 @@ export default async function AppOverviewPage({ params }: { params: Params }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card className="p-4 space-y-2">
+      <Card className="px-4 py-4 gap-3">
         <div className="text-sm font-medium">Latest deployment</div>
         {lastDeploy ? (
-          <div className="space-y-1 text-sm">
-            <div>
-              <Badge variant={lastDeploy.status === "succeeded" ? "default" : lastDeploy.status === "failed" ? "destructive" : "secondary"}>
-                {lastDeploy.status}
-              </Badge>{" "}
-              <span className="font-mono text-xs">{lastDeploy.commitSha.slice(0, 8)}</span>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusDot status={statusToDot(lastDeploy.status)} label={lastDeploy.status} />
+              <span>{lastDeploy.status}</span>
+              <CopyButton value={lastDeploy.commitSha} label="commit SHA" />
             </div>
             {lastDeploy.commitAuthor && <div className="text-muted-foreground">by {lastDeploy.commitAuthor}</div>}
             {lastDeploy.finishedAt && (
@@ -43,27 +46,42 @@ export default async function AppOverviewPage({ params }: { params: Params }) {
         <DeployButton appId={app.id} />
       </Card>
 
-      <Card className="p-4 space-y-2">
+      <Card className="px-4 py-4 gap-3">
         <div className="text-sm font-medium">Container</div>
-        <div className="text-sm space-y-1">
+        <div className="space-y-2 text-sm">
           {lastSucceeded?.imageTag ? (
-            <div className="font-mono text-xs break-all">{lastSucceeded.imageTag}</div>
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground">Image tag</div>
+              <CopyButton value={lastSucceeded.imageTag} label="image tag" variant="block" />
+            </div>
           ) : (
             <div className="text-muted-foreground">No running container yet.</div>
           )}
-          <div className="text-muted-foreground">Bound port: <span className="font-mono">:{app.internalPort}</span></div>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              Bound port
+              <HelpHint>
+                The internal port the container listens on. nginx routes the public domain to this port on the host.
+              </HelpHint>
+            </div>
+            <CopyButton value={String(app.internalPort)} label="port" />
+          </div>
           <div className="text-muted-foreground">Resources: {app.memLimitMb}MB / {app.cpuLimit} CPU</div>
         </div>
       </Card>
 
-      <Card className="p-4 space-y-2 md:col-span-2">
+      <Card className="px-4 py-4 gap-3 md:col-span-2">
         <div className="text-sm font-medium">Domains</div>
         {domains.length === 0 ? (
           <div className="text-sm text-muted-foreground">No domains attached.</div>
         ) : (
           <div className="flex flex-wrap gap-2">
             {domains.map((d) => (
-              <Badge key={d.id} variant={d.certStatus === "active" ? "default" : d.certStatus === "failed" ? "destructive" : "secondary"}>
+              <Badge
+                key={d.id}
+                variant={d.certStatus === "active" ? "default" : d.certStatus === "failed" ? "destructive" : "secondary"}
+                className="max-w-full truncate"
+              >
                 {d.hostname} · {d.certStatus}
               </Badge>
             ))}

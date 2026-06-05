@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { HelpHint } from "@/components/common/help-hint";
 import { upsertEnvVarAction } from "@/actions/env-vars";
 
 export function EnvVarForm({ appId }: { appId: string }) {
@@ -37,11 +38,17 @@ export function EnvVarForm({ appId }: { appId: string }) {
     <Card className="p-4 space-y-3">
       <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
         <div>
-          <Label htmlFor="env-key">Key</Label>
+          <Label htmlFor="env-key" className="flex items-center gap-1">
+            Key
+            <HelpHint>Uppercase letters, digits, and underscores. Convention: <code>DATABASE_URL</code>, <code>PORT</code>, <code>NODE_ENV</code>.</HelpHint>
+          </Label>
           <Input id="env-key" value={key} onChange={(e) => setKey(e.target.value.toUpperCase())} placeholder="DATABASE_URL" />
         </div>
         <div>
-          <Label htmlFor="env-value">Value</Label>
+          <Label htmlFor="env-value" className="flex items-center gap-1">
+            Value
+            <HelpHint>Stored encrypted at rest if &ldquo;Treat as secret&rdquo; is on. Decrypted only at container start.</HelpHint>
+          </Label>
           <Input id="env-value" value={value} onChange={(e) => setValue(e.target.value)} />
         </div>
         <Button onClick={submit} disabled={busy || !key || !value}>{busy ? "Saving…" : "Save"}</Button>

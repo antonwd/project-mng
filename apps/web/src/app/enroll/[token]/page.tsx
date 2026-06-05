@@ -10,8 +10,10 @@ export default async function EnrollPage({ params }: { params: Params }) {
   if (!res.ok) redirect("/login?reason=expired-invite");
   const body = (await res.json()) as { valid: boolean; email: string | null; expiresAt: string };
   return (
-    <main className="min-h-screen grid place-items-center p-8">
-      <EnrollForm token={token} prefillEmail={body.email ?? ""} />
+    <main className="min-h-screen grid place-items-center p-4 md:p-8">
+      <div className="w-full max-w-md">
+        <EnrollForm token={token} prefillEmail={body.email ?? ""} />
+      </div>
     </main>
   );
 }

@@ -1,42 +1,59 @@
 "use client";
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/common/states";
+import { KeyRound } from "lucide-react";
+import { useOptimisticAction } from "@/hooks/use-optimistic-action";
+import { fromThrowing } from "@/lib/action-result";
 import { deleteEnvVarAction, type EnvVar } from "@/actions/env-vars";
 
 export function EnvVarsTable({ appId, envVars }: { appId: string; envVars: EnvVar[] }) {
-  const router = useRouter();
-  const [busy, startTransition] = useTransition();
-  if (envVars.length === 0) {
-    return <Card className="p-6 text-center text-muted-foreground text-sm">No env vars set.</Card>;
+  const { items, remove, pending } = useOptimisticAction<EnvVar, string>({
+    initial: envVars,
+    keyFn: (v) => v.key,
+    addAction: () => Promise.resolve({ ok: true as const }),
+    removeAction: (key) => fromThrowing(() => deleteEnvVarAction(appId, key)),
+    toastMessages: {
+      addSuccess: "Env var saved",
+      addErrorPrefix: "Save failed",
+      removeSuccess: "Env var deleted",
+      removeErrorPrefix: "Delete failed",
+    },
+  });
+
+  if (items.length === 0) {
+    return (
+      <EmptyState icon={KeyRound} title="No env vars set">
+        Add a variable above. Changes take effect on the next deploy.
+      </EmptyState>
+    );
   }
+
   return (
     <Card className="divide-y">
-      {envVars.map((v) => (
-        <div key={v.key} className="flex items-center justify-between gap-3 p-3">
+      {items.map((v) => (
+        <div key={v.key} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3">
           <div className="min-w-0 flex-1">
             <div className="font-mono text-sm truncate">{v.key}</div>
             <div className="text-xs text-muted-foreground truncate">
               {v.isSecret ? "********" : v.value}
             </div>
           </div>
-          {v.isSecret && <Badge variant="secondary">secret</Badge>}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              if (!confirm(`Delete ${v.key}?`)) return;
-              startTransition(async () => {
-                await deleteEnvVarAction(appId, v.key);
-                router.refresh();
-              });
-            }}
-          >
-            Delete
-          </Button>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {v.isSecret && <Badge variant="secondary">secret</Badge>}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={pending}
+              onClick={() => {
+                if (!confirm(`Delete ${v.key}?`)) return;
+                remove(v.key);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
       ))}
     </Card>

@@ -6,11 +6,17 @@ import { createServer } from "node:http";
 const port = Number(process.env.MOCK_API_PORT ?? 3001);
 
 const state = {
-  users: [{ id: "user-1", email: "smoke@a.com", totpEnabled: true }],
+  users: [{ id: "user-1", email: "smoke@a.com", totpEnabled: true, createdAt: "2025-01-01T00:00:00.000Z" }],
   apps: [],
   deployments: [],
   installations: [{ id: 42, account: "smoke-org" }],
   repos: [{ id: 1, fullName: "smoke-org/hello", defaultBranch: "main" }],
+  auditEvents: [
+    { id: "ev-1", ts: new Date(Date.now() - 5 * 60_000).toISOString(),  actorUserId: "user-1", actorIp: "127.0.0.1", action: "app.create",      targetType: "app",    targetId: "app-1", metadata: {} },
+    { id: "ev-2", ts: new Date(Date.now() - 4 * 60_000).toISOString(),  actorUserId: "user-1", actorIp: "127.0.0.1", action: "deploy.enqueue",  targetType: "deploy", targetId: "dep-1", metadata: {} },
+    { id: "ev-3", ts: new Date(Date.now() - 3 * 60_000).toISOString(),  actorUserId: "user-1", actorIp: "127.0.0.1", action: "domain.add",      targetType: "domain", targetId: "dom-1", metadata: {} },
+    { id: "ev-4", ts: new Date(Date.now() - 2 * 60_000).toISOString(),  actorUserId: "user-1", actorIp: "127.0.0.1", action: "invite.create",   targetType: "user",   targetId: "user-2", metadata: {} },
+  ],
 };
 
 const SESSION_COOKIE = "pm_session=mock-session-cookie; Path=/; HttpOnly; SameSite=Strict";
@@ -156,7 +162,17 @@ const server = createServer(async (req, res) => {
     if (method === "GET" && path === "/api/invites") return json(res, 200, { invites: [] });
     if (method === "GET" && path === "/api/users") return json(res, 200, { users: state.users });
     if (method === "GET" && path === "/api/me/credentials") return json(res, 200, { credentials: [] });
-    if (method === "GET" && path === "/api/audit-log") return json(res, 200, { events: [] });
+    if (method === "GET" && path === "/api/audit-log") {
+      // Mock the filtering by `action` prefix and `limit`. From/to are unused for now.
+      const action = url.searchParams.get("action") ?? "";
+      const limit = Number(url.searchParams.get("limit") ?? "100");
+      const filtered = action
+        ? state.auditEvents.filter((e) => e.action.startsWith(action))
+        : state.auditEvents.slice();
+      // Most recent first.
+      filtered.sort((a, b) => b.ts.localeCompare(a.ts));
+      return json(res, 200, { events: filtered.slice(0, limit) });
+    }
 
     return json(res, 404, { error: { code: "not_found", message: `mock has no route for ${method} ${path}` } });
   } catch (e) {

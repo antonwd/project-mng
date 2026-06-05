@@ -15,7 +15,7 @@ export default async function DomainsPage({ params }: { params: Params }) {
     <div className="space-y-4">
       <h2 className="text-lg font-medium">Domains</h2>
       <DomainAttachForm appId={app.id} />
-      <DomainsList domains={domains} />
+      <DomainsList appId={app.id} domains={domains} />
     </div>
   );
 }

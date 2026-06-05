@@ -128,3 +128,9 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  .touch-target {
+    @apply min-h-9 min-w-9;
+  }
+}

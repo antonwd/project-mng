@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpHint } from "@/components/common/help-hint";
 import { addDomainAction } from "@/actions/domains";
 
 export function DomainAttachForm({ appId }: { appId: string }) {
@@ -29,13 +30,18 @@ export function DomainAttachForm({ appId }: { appId: string }) {
     <Card className="p-4 space-y-3">
       <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
         <div>
-          <Label htmlFor="hostname">Hostname</Label>
+          <Label htmlFor="hostname" className="flex items-center gap-1">
+            Hostname
+            <HelpHint>
+              FQDN to attach. Point the A record at this VPS, then click &ldquo;Check DNS&rdquo; on the row to advance the cert state.
+            </HelpHint>
+          </Label>
           <Input id="hostname" value={hostname} onChange={(e) => setHostname(e.target.value.toLowerCase())} placeholder="app.example.com" />
         </div>
         <Button onClick={submit} disabled={busy || !hostname}>{busy ? "Attaching…" : "Attach domain"}</Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        After attaching, point the hostname's A record at your VPS, then click "Check DNS" on the row to advance the cert state.
+        DNS propagation can take a few minutes. The cert state advances automatically once the A record resolves.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </Card>

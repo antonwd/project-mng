@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { HelpHint } from "@/components/common/help-hint";
 import { listInstallationRepos, type Installation, type Repo } from "@/actions/github";
 import { createAppAction } from "@/actions/apps";
 
@@ -31,14 +32,33 @@ export function NewAppWizard({ installations }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (!installationId) return;
+  async function loadRepos(id: string) {
+    if (!id) return;
     setReposLoading(true);
-    listInstallationRepos(installationId)
-      .then((r) => setRepos(r))
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setReposLoading(false));
-  }, [installationId]);
+    setError(null);
+    try {
+      const r = await listInstallationRepos(id);
+      setRepos(r);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setReposLoading(false);
+    }
+  }
+
+  // Initial load for the default installation. Runs once.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (installationId) void loadRepos(installationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function pickInstallation(id: string) {
+    setInstallationId(id);
+    setSelectedRepo("");
+    setRepos([]);
+    void loadRepos(id);
+  }
 
   function pickRepo(fullName: string) {
     setSelectedRepo(fullName);
@@ -72,9 +92,22 @@ export function NewAppWizard({ installations }: Props) {
           <CardHeader><CardTitle>1. Pick a repository</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>GitHub installation</Label>
-              <Select value={installationId} onValueChange={(v) => setInstallationId(v ?? "")}>
-                <SelectTrigger><SelectValue placeholder="Choose installation" /></SelectTrigger>
+              <Label className="flex items-center gap-1">
+                GitHub installation
+                <HelpHint>
+                  Which installed GitHub App org/user account to fetch repos from. Install the projectMng app on more accounts to see them here.
+                </HelpHint>
+              </Label>
+              <Select value={installationId} onValueChange={(v) => pickInstallation(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value
+                        ? installations.find((i) => i.id.toString() === value)?.account ?? value
+                        : "Choose installation"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {installations.map((i) => (
                     <SelectItem key={i.id} value={i.id.toString()}>{i.account}</SelectItem>
@@ -88,7 +121,15 @@ export function NewAppWizard({ installations }: Props) {
                 <div className="text-sm text-muted-foreground py-2">Loading repos…</div>
               ) : (
                 <Select value={selectedRepo} onValueChange={(v) => pickRepo(v ?? "")}>
-                  <SelectTrigger><SelectValue placeholder="Choose repo" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue>
+                      {(value: string | null) =>
+                        value
+                          ? repos.find((r) => r.fullName === value)?.fullName ?? value
+                          : "Choose repo"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     {repos.map((r) => (
                       <SelectItem key={r.id} value={r.fullName}>{r.fullName}</SelectItem>
@@ -108,21 +149,34 @@ export function NewAppWizard({ installations }: Props) {
           <CardHeader><CardTitle>2. Configure</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="slug">Slug (used as subdomain + container name)</Label>
+              <Label htmlFor="slug" className="flex items-center gap-1">
+                Slug (used as subdomain + container name)
+                <HelpHint>
+                  Lowercase letters, digits, hyphens. Becomes <code className="font-mono">{"{slug}.<your-host>"}</code> and the Docker container name.
+                </HelpHint>
+              </Label>
               <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="branch">Default branch</Label>
+              <Label htmlFor="branch" className="flex items-center gap-1">
+                Default branch
+                <HelpHint>The branch that <strong>Deploy latest</strong> and auto-deploy build from.</HelpHint>
+              </Label>
               <Input id="branch" value={defaultBranch} onChange={(e) => setDefaultBranch(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="buildRoot">Build root</Label>
+              <Label htmlFor="buildRoot" className="flex items-center gap-1">
+                Build root
+                <HelpHint>Path inside the repo where the build runs. <code className="font-mono">.</code> = repo root.</HelpHint>
+              </Label>
               <Input id="buildRoot" value={buildRoot} onChange={(e) => setBuildRoot(e.target.value)} />
             </div>
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <Label htmlFor="autoDeploy">Auto-deploy on push</Label>
-                <p className="text-xs text-muted-foreground">Off by default. Each push to the default branch will trigger a deploy when enabled.</p>
+            <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <div className="min-w-0">
+                <Label htmlFor="autoDeploy" className="flex items-center gap-1">
+                  Auto-deploy on push
+                  <HelpHint>Off by default. When on, every push to the default branch triggers a deploy.</HelpHint>
+                </Label>
               </div>
               <Switch id="autoDeploy" checked={autoDeploy} onCheckedChange={setAutoDeploy} />
             </div>
