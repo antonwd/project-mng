@@ -6,11 +6,13 @@ import { requireSession } from "@/lib/auth";
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const me = await requireSession();
   return (
-    <div className="grid grid-cols-[240px_1fr] min-h-screen">
-      <Sidebar />
-      <div className="flex flex-col">
+    <div className="grid min-h-screen md:grid-cols-[240px_1fr]">
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+      <div className="flex flex-col min-w-0">
         <Header email={me.email} />
-        <main className="flex-1 p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
     </div>
   );
