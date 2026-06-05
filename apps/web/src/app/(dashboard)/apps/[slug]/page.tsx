@@ -6,18 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeployButton } from "@/components/apps/deploy-button";
 import { formatDistanceToNow } from "date-fns";
-import { StatusDot, type DotStatus } from "@/components/common/status-dot";
+import { StatusDot } from "@/components/common/status-dot";
 import { CopyButton } from "@/components/common/copy-button";
 import { HelpHint } from "@/components/common/help-hint";
+import { statusToDot } from "@/lib/status";
 
 type Params = Promise<{ slug: string }>;
-
-function statusToDot(status: string | undefined): DotStatus {
-  if (status === "succeeded") return "succeeded";
-  if (status === "failed") return "failed";
-  if (status === "running" || status === "deploying" || status === "queued") return status;
-  return "stopped";
-}
 
 export default async function AppOverviewPage({ params }: { params: Params }) {
   const { slug } = await params;

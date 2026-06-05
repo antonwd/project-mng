@@ -3,16 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listApps } from "@/actions/apps";
 import { formatDistanceToNow } from "date-fns";
-import { StatusDot, type DotStatus } from "@/components/common/status-dot";
+import { StatusDot } from "@/components/common/status-dot";
 import { EmptyState } from "@/components/common/states";
 import { Boxes } from "lucide-react";
-
-function statusToDot(status: string | undefined): DotStatus {
-  if (status === "succeeded") return "succeeded";
-  if (status === "failed") return "failed";
-  if (status === "running" || status === "deploying" || status === "queued") return status;
-  return "stopped";
-}
+import { statusToDot } from "@/lib/status";
 
 export default async function AppsPage() {
   const apps = await listApps();
