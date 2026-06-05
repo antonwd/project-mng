@@ -21,23 +21,25 @@ export default async function AppLayout({ children, params }: { children: ReactN
   if (!app) notFound();
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{app.slug}</h1>
-        <div className="text-sm text-muted-foreground">{app.githubRepoFullName}</div>
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold truncate">{app.slug}</h1>
+        <div className="text-sm text-muted-foreground truncate">{app.githubRepoFullName}</div>
       </div>
-      <nav className="border-b flex gap-1">
-        {TABS.map((t) => {
-          const href = t.slug ? `/apps/${app.slug}/${t.slug}` : `/apps/${app.slug}`;
-          return (
-            <Link
-              key={t.label}
-              href={href}
-              className="px-3 py-2 text-sm border-b-2 border-transparent hover:border-foreground/40 data-[active]:border-foreground"
-            >
-              {t.label}
-            </Link>
-          );
-        })}
+      <nav className="border-b -mx-4 md:mx-0 overflow-x-auto">
+        <div className="flex gap-1 px-4 md:px-0 snap-x snap-mandatory min-w-max">
+          {TABS.map((t) => {
+            const href = t.slug ? `/apps/${app.slug}/${t.slug}` : `/apps/${app.slug}`;
+            return (
+              <Link
+                key={t.label}
+                href={href}
+                className="snap-start whitespace-nowrap px-3 py-2 text-sm border-b-2 border-transparent hover:border-foreground/40 data-[active]:border-foreground"
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
       <div>{children}</div>
     </div>
