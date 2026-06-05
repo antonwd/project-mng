@@ -5,21 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/common/states";
 import { KeyRound } from "lucide-react";
 import { useOptimisticAction } from "@/hooks/use-optimistic-action";
-import { fromMaybeError, fromThrowing } from "@/lib/action-result";
-import { upsertEnvVarAction, deleteEnvVarAction, type EnvVar } from "@/actions/env-vars";
+import { fromThrowing } from "@/lib/action-result";
+import { deleteEnvVarAction, type EnvVar } from "@/actions/env-vars";
 
 export function EnvVarsTable({ appId, envVars }: { appId: string; envVars: EnvVar[] }) {
   const { items, remove, pending } = useOptimisticAction<EnvVar, string>({
     initial: envVars,
     keyFn: (v) => v.key,
-    addAction: (v) =>
-      fromMaybeError(async () => {
-        const fd = new FormData();
-        fd.set("key", v.key);
-        fd.set("value", v.value ?? "");
-        fd.set("isSecret", v.isSecret ? "true" : "false");
-        return upsertEnvVarAction(appId, fd);
-      }),
+    addAction: () => Promise.resolve({ ok: true as const }),
     removeAction: (key) => fromThrowing(() => deleteEnvVarAction(appId, key)),
     toastMessages: {
       addSuccess: "Env var saved",

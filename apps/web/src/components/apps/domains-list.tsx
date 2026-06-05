@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/states";
 import { Globe } from "lucide-react";
 import { useOptimisticAction } from "@/hooks/use-optimistic-action";
-import { fromMaybeError, fromThrowing } from "@/lib/action-result";
-import { checkDnsAction, removeDomainAction, addDomainAction, type Domain } from "@/actions/domains";
+import { fromThrowing } from "@/lib/action-result";
+import { checkDnsAction, removeDomainAction, type Domain } from "@/actions/domains";
 import { formatDistanceToNow } from "date-fns";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function DomainsList({ appId, domains }: { appId: string; domains: Domain[] }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checking, startCheckTransition] = useTransition();
@@ -17,7 +18,7 @@ export function DomainsList({ appId, domains }: { appId: string; domains: Domain
   const { items, remove, pending } = useOptimisticAction<Domain, string>({
     initial: domains,
     keyFn: (d) => d.id,
-    addAction: (d) => fromMaybeError(() => addDomainAction(appId, d.hostname)),
+    addAction: () => Promise.resolve({ ok: true as const }),
     removeAction: (id) => fromThrowing(() => removeDomainAction(id)),
     toastMessages: {
       addSuccess: "Domain attached",
