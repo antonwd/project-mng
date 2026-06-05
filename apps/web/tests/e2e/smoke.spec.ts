@@ -12,7 +12,7 @@ test("login → apps → new app → deploy", async ({ page }) => {
   await passwordTab.getByRole("button", { name: /sign in/i }).click();
 
   await expect(page).toHaveURL(/\/apps$/);
-  await expect(page.getByRole("heading", { name: "Apps" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
 
   // No apps yet → CTA visible.
   await page.getByRole("link", { name: /create your first app|new app/i }).first().click();
