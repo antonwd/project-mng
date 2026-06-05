@@ -1,19 +1,38 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { checkDnsAction, removeDomainAction, type Domain } from "@/actions/domains";
+import { EmptyState } from "@/components/common/states";
+import { Globe } from "lucide-react";
+import { useOptimisticAction } from "@/hooks/use-optimistic-action";
+import { fromMaybeError, fromThrowing } from "@/lib/action-result";
+import { checkDnsAction, removeDomainAction, addDomainAction, type Domain } from "@/actions/domains";
 import { formatDistanceToNow } from "date-fns";
 
-export function DomainsList({ domains }: { domains: Domain[] }) {
-  const router = useRouter();
-  const [busy, startTransition] = useTransition();
+export function DomainsList({ appId, domains }: { appId: string; domains: Domain[] }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [checking, startCheckTransition] = useTransition();
 
-  if (domains.length === 0) {
-    return <Card className="p-6 text-center text-muted-foreground text-sm">No domains attached.</Card>;
+  const { items, remove, pending } = useOptimisticAction<Domain, string>({
+    initial: domains,
+    keyFn: (d) => d.id,
+    addAction: (d) => fromMaybeError(() => addDomainAction(appId, d.hostname)),
+    removeAction: (id) => fromThrowing(() => removeDomainAction(id)),
+    toastMessages: {
+      addSuccess: "Domain attached",
+      addErrorPrefix: "Attach failed",
+      removeSuccess: "Domain removed",
+      removeErrorPrefix: "Remove failed",
+    },
+  });
+
+  if (items.length === 0) {
+    return (
+      <EmptyState icon={Globe} title="No domains attached">
+        Add a hostname above, then point its DNS A record at this VPS.
+      </EmptyState>
+    );
   }
 
   function variantFor(status: string) {
@@ -24,13 +43,13 @@ export function DomainsList({ domains }: { domains: Domain[] }) {
 
   return (
     <Card className="divide-y">
-      {domains.map((d) => {
+      {items.map((d) => {
         const daysLeft = d.certExpiresAt
           ? Math.max(0, Math.round((new Date(d.certExpiresAt).getTime() - Date.now()) / 86_400_000))
           : null;
         return (
           <div key={d.id} className="p-3 space-y-2">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="font-medium truncate">{d.hostname}</div>
                 <div className="text-xs text-muted-foreground">
@@ -41,43 +60,40 @@ export function DomainsList({ domains }: { domains: Domain[] }) {
                   {d.certIssuedAt && d.certStatus === "active" && ` · issued ${formatDistanceToNow(new Date(d.certIssuedAt), { addSuffix: true })}`}
                 </div>
               </div>
-              <Badge variant={variantFor(d.certStatus)}>{d.certStatus}</Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => {
-                  setErrors((p) => ({ ...p, [d.id]: "" }));
-                  startTransition(async () => {
-                    try {
-                      const res = await checkDnsAction(d.id);
-                      if (res.status === "pending_dns") {
-                        setErrors((p) => ({ ...p, [d.id]: `DNS not yet pointing to this host (resolved: ${res.resolved.join(", ") || "nothing"})` }));
-                      } else {
-                        router.refresh();
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant={variantFor(d.certStatus)}>{d.certStatus}</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={checking || pending}
+                  onClick={() => {
+                    setErrors((p) => ({ ...p, [d.id]: "" }));
+                    startCheckTransition(async () => {
+                      try {
+                        const res = await checkDnsAction(d.id);
+                        if (res.status === "pending_dns") {
+                          setErrors((p) => ({ ...p, [d.id]: `DNS not yet pointing to this host (resolved: ${res.resolved.join(", ") || "nothing"})` }));
+                        }
+                      } catch (e) {
+                        setErrors((p) => ({ ...p, [d.id]: e instanceof Error ? e.message : String(e) }));
                       }
-                    } catch (e) {
-                      setErrors((p) => ({ ...p, [d.id]: e instanceof Error ? e.message : String(e) }));
-                    }
-                  });
-                }}
-              >
-                Check DNS
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                onClick={() => {
-                  if (!confirm(`Remove ${d.hostname}?`)) return;
-                  startTransition(async () => {
-                    await removeDomainAction(d.id);
-                    router.refresh();
-                  });
-                }}
-              >
-                Remove
-              </Button>
+                    });
+                  }}
+                >
+                  Check DNS
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => {
+                    if (!confirm(`Remove ${d.hostname}?`)) return;
+                    remove(d.id);
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
             </div>
             {errors[d.id] && <p className="text-xs text-destructive">{errors[d.id]}</p>}
           </div>
