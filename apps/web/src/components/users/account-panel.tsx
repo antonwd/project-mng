@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpHint } from "@/components/common/help-hint";
+import { CopyButton } from "@/components/common/copy-button";
 import { passwordSetupAction, type ActionState } from "@/actions/auth";
 import { removeCredentialAction, type Credential } from "@/actions/users";
 import type { Me } from "@/lib/auth";
@@ -18,7 +20,7 @@ export function AccountPanel({ me, credentials }: { me: Me; credentials: Credent
     <div className="space-y-6">
       <Card className="p-4 space-y-3">
         <div className="text-sm font-medium">Identity</div>
-        <div className="text-sm text-muted-foreground">{me.email}</div>
+        <div className="text-sm text-muted-foreground break-words">{me.email}</div>
       </Card>
 
       <PasskeysSection credentials={credentials} onChange={() => router.refresh()} />
@@ -57,8 +59,13 @@ function PasskeysSection({ credentials, onChange }: { credentials: Credential[];
 
   return (
     <Card className="p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">Passkeys</div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-medium flex items-center gap-1">
+          Passkeys
+          <HelpHint>
+            Phishing-resistant credentials bound to this device. Recommended over password + TOTP.
+          </HelpHint>
+        </div>
         <Button variant="outline" size="sm" onClick={addPasskey}>Add passkey</Button>
       </div>
       <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-end">
@@ -72,7 +79,7 @@ function PasskeysSection({ credentials, onChange }: { credentials: Credential[];
       ) : (
         <div className="divide-y">
           {credentials.map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-3 py-2">
+            <div key={c.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-2">
               <div className="min-w-0">
                 <div className="text-sm font-medium truncate">{c.nickname}</div>
                 <div className="text-xs text-muted-foreground">
@@ -142,7 +149,12 @@ function PasswordTotpSection({ enabled }: { enabled: boolean }) {
 
   return (
     <Card className="p-4 space-y-3">
-      <div className="text-sm font-medium">Set up password + TOTP</div>
+      <div className="text-sm font-medium flex items-center gap-1">
+        Set up password + TOTP
+        <HelpHint>
+          Fallback for environments without passkey support. Pair with a TOTP app (1Password, Authy, Google Authenticator).
+        </HelpHint>
+      </div>
       <form
         action={(fd) => {
           fd.set("totpSecret", secret);
@@ -158,9 +170,14 @@ function PasswordTotpSection({ enabled }: { enabled: boolean }) {
           <Input id="pw" name="password" type="password" minLength={8} required />
         </div>
         <div className="rounded-md border p-3 space-y-2">
-          <div className="text-sm">Scan with your authenticator</div>
+          <div className="text-sm flex items-center gap-1">
+            Scan with your authenticator
+            <HelpHint>
+              Or type the secret below into the app manually. Never reuse this secret on another account.
+            </HelpHint>
+          </div>
           {qr ? <img src={qr} alt="TOTP QR" className="size-44 mx-auto" /> : <div className="text-xs text-muted-foreground">Generating QR…</div>}
-          <div className="text-xs text-muted-foreground font-mono break-all">{secret}</div>
+          <CopyButton value={secret} label="TOTP secret" variant="block" />
         </div>
         <div>
           <Label htmlFor="totpToken">6-digit code</Label>
